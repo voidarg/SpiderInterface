@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.26430.14
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WindowsFormsApp1", "WindowsFormsApp1\WindowsFormsApp1.csproj", "{608DD64C-AB97-416F-AD58-1E18D4B0D670}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpiderInterface", "WindowsFormsApp1\SpiderInterface.csproj", "{608DD64C-AB97-416F-AD58-1E18D4B0D670}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
