@@ -206,14 +206,14 @@ namespace WindowsFormsApp1
             testSetup.MotorId = motorId.SelectedIndex;
             testSetup.ChannelId = Inputs.SelectedIndex;
 
-            //testSetup.TargetLoad = double.Parse(targetLoad.Text);
+            testSetup.TargetLoad = double.Parse(targetLoad.Text);
             //testSetup.MinPos = int.Parse(minPos.Text);
             //testSetup.MaxPos = int.Parse(maxPos.Text);
 
             testSetup.PositionRequestCommand = "{P" + testSetup.MotorId.ToString() + "}";
-            testSetup.MoveCommand = "M" + testSetup.MotorId.ToString() + ",{0},{1}}";
+            testSetup.MoveCommand = "M" + testSetup.MotorId.ToString() + ",{0},{1}";
             testSetup.Torque = 0;
-            testSetup.Koeff = 2;
+            testSetup.Koeff = 1;
 
             // configure serial port
             serialPort.BaudRate = 115200;
@@ -246,30 +246,36 @@ namespace WindowsFormsApp1
             {
                 ++count;
                 // update displayed value
-                currentLoad.Text = e.VoltageRatio.ToString();
+                var vr = e.VoltageRatio * 1000000;
+                currentLoad.Text = vr.ToString();
 
                 // request position
                 serialPort.Write(testSetup.PositionRequestCommand);
-                var diff = testSetup.TargetLoad - e.VoltageRatio;
-                testSetup.Torque += (int) Math.Floor (diff * testSetup.Koeff);
-
-                if (testSetup.Torque > 250)
+                var diff = Math.Round(testSetup.TargetLoad - vr);
+             
+                testSetup.Torque = (diff == 0) ? 0 : testSetup.Torque + (int)diff * testSetup.Koeff;
+                if (testSetup.Torque > 25)
                 {
-                    testSetup.Torque = 250;
+                    testSetup.Torque = 25;
                 }
-                else if (testSetup.Torque < -250)
+                else if (testSetup.Torque < -25)
                 {
-                    testSetup.Torque = -250;
+                    testSetup.Torque = -25;
                 }
 
                 if (diff > 0)   // go back
                 {
                     var command = String.Format(testSetup.MoveCommand, "B", testSetup.Torque);
+                    System.Diagnostics.Trace.WriteLine(command);
+                    serialPort.Write("{" + command + "}");
                 }
                 else if (diff < 0) // go forward
                 {
                     var command = String.Format(testSetup.MoveCommand, "F", testSetup.Torque);
+                    System.Diagnostics.Trace.WriteLine(command);
+                    serialPort.Write("{" + command + "}");
                 }
+                
             }
             else
             {
@@ -292,7 +298,7 @@ namespace WindowsFormsApp1
             SerialPort sp = sender as SerialPort;
             sp.ReadExisting();
             //System.Diagnostics.Trace.WriteLine("SP: " + sp.ReadExisting());
-            serialPort.Write("{M0,F,100}");
+            //serialPort.Write("{M0,F,100}");
         }
 
         private void StopButton_Click(object sender, EventArgs e)
@@ -300,6 +306,10 @@ namespace WindowsFormsApp1
             var info = Inputs.SelectedItem as InputInfo;
             info.Input.BridgeEnabled = false;
 
+            var command = String.Format(testSetup.MoveCommand, "B", 0);
+            serialPort.Write("{" + command + "}");
+
+            System.Threading.Thread.Sleep(500);
             serialPort.Close();
 
             StartButton.Enabled = true;
