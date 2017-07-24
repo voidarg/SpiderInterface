@@ -25,6 +25,8 @@ namespace WindowsFormsApp1
 
             public int Torque { get; set; }
             public int Koeff { get; set; }
+            public double LastRead { get; set; }
+            public int LastDiff { get; set; }
 
             public string PositionRequestCommand { get; set; }
             public string MoveCommand { get; set; }
@@ -143,8 +145,6 @@ namespace WindowsFormsApp1
         void OnPhidgetAttached(object sender, ManagerAttachEventArgs args)
         {
             // add device to the list
-            int a = 0;
-
             VoltageRatioInput input = new VoltageRatioInput();
             input.DeviceSerialNumber = args.Channel.DeviceSerialNumber;
             input.Channel = args.Channel.Channel;
@@ -207,14 +207,18 @@ namespace WindowsFormsApp1
             testSetup.ChannelId = Inputs.SelectedIndex;
 
             testSetup.TargetLoad = double.Parse(targetLoad.Text);
+            testSetup.LastDiff = 0;
+            testSetup.LastRead = testSetup.TargetLoad;
+
             //testSetup.MinPos = int.Parse(minPos.Text);
             //testSetup.MaxPos = int.Parse(maxPos.Text);
 
             testSetup.PositionRequestCommand = "{P" + testSetup.MotorId.ToString() + "}";
             testSetup.MoveCommand = "M" + testSetup.MotorId.ToString() + ",{0},{1}";
             testSetup.Torque = 0;
+            direction = 'S';
             testSetup.Koeff = 1;
-
+            
             // configure serial port
             serialPort.BaudRate = 115200;
             serialPort.PortName = testSetup.ArduinoDevice.Port;
@@ -240,6 +244,8 @@ namespace WindowsFormsApp1
         }
 
         static long count = 0;
+        static char direction = 'S';
+
         private void Input_VoltageRatioChange(object sender, VoltageRatioInputVoltageRatioChangeEventArgs e)
         {
             if (testSetup != null)
@@ -249,33 +255,64 @@ namespace WindowsFormsApp1
                 var vr = e.VoltageRatio * 1000000;
                 currentLoad.Text = vr.ToString();
 
+                var zero = -42;
+                var powerLimit = 150;
+                var step = 1;
+
                 // request position
                 serialPort.Write(testSetup.PositionRequestCommand);
-                var diff = Math.Round(testSetup.TargetLoad - vr);
-             
-                testSetup.Torque = (diff == 0) ? 0 : testSetup.Torque + (int)diff * testSetup.Koeff;
-                if (testSetup.Torque > 25)
+                var diff = (int)Math.Round(testSetup.TargetLoad - vr);
+                //var diff2 = (int)Math.Round(testSetup.LastRead - vr);
+
+                //testSetup.LastRead = (int)vr;
+                // testSetup.Torque += (int)diff /*testSetup.Koeff*/;
+
+                /*
+                var torque = Math.Abs(testSetup.Torque);
+                if (torque > 50)
                 {
-                    testSetup.Torque = 25;
+                    torque = 50;
+                }*/
+
+                /*
+                using (var sw = System.IO.File.AppendText("c:\\tmp\\runlog.csv"))
+                {
+                    sw.WriteLine(log);
+                }*/
+
+                testSetup.Torque += diff / 10;
+                if (testSetup.Torque > powerLimit)
+                {
+                    testSetup.Torque = powerLimit;
                 }
-                else if (testSetup.Torque < -25)
+                else if (testSetup.Torque < (-1*powerLimit))
                 {
-                    testSetup.Torque = -25;
+                    testSetup.Torque = (-1 * powerLimit);
                 }
 
-                if (diff > 0)   // go back
+                if (testSetup.Torque > 0)   // go back
                 {
-                    var command = String.Format(testSetup.MoveCommand, "B", testSetup.Torque);
-                    System.Diagnostics.Trace.WriteLine(command);
-                    serialPort.Write("{" + command + "}");
+                    direction = 'B';
                 }
-                else if (diff < 0) // go forward
+                else if (testSetup.Torque < 0) // go forward
                 {
-                    var command = String.Format(testSetup.MoveCommand, "F", testSetup.Torque);
-                    System.Diagnostics.Trace.WriteLine(command);
-                    serialPort.Write("{" + command + "}");
+                    direction = 'F';
                 }
-                
+                else
+                {
+                    direction = 'S';
+                }
+
+                if (direction != 'S')
+                {
+                    var torque = Math.Abs(testSetup.Torque);
+                    var log = String.Format("{0}\t\t{1}:{3}\t\t{2}", vr, torque, diff, direction);
+                    System.Diagnostics.Trace.WriteLine(log);
+
+                    var command = String.Format(testSetup.MoveCommand, direction, torque);
+                    serialPort.Write("{" + command + "}");
+
+                }
             }
             else
             {
