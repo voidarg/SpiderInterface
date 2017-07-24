@@ -54,6 +54,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ArduinoInfo.cs" />
+    <Compile Include="ArduinoResponse.cs" />
     <Compile Include="MotorInfo.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>

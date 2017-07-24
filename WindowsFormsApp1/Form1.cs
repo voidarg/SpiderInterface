@@ -13,6 +13,9 @@ namespace WindowsFormsApp1
 {
     public partial class Form1 : Form
     {
+        int position = 0;
+
+
         class TestSetup
         {
             public ArduinoInfo ArduinoDevice { get; set; }
@@ -334,7 +337,16 @@ namespace WindowsFormsApp1
         private void SerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
             SerialPort sp = sender as SerialPort;
-            //sp.ReadExisting();
+            var data = sp.ReadExisting();
+
+            System.Text.RegularExpressions.Regex re = new System.Text.RegularExpressions.Regex(@"P(\d+),");
+            var match = re.Match(data);
+            if (match.Success)
+            {
+                position = int.Parse(match.Value);
+                currentPosition.Text = match.Value;
+            }
+           
 
             System.Diagnostics.Trace.WriteLine("SP: " + sp.ReadExisting());
             //serialPort.Write("{M0,F,100}");
