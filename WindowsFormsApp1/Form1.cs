@@ -307,10 +307,11 @@ namespace WindowsFormsApp1
                 {
                     var torque = Math.Abs(testSetup.Torque);
                     var log = String.Format("{0}\t\t{1}:{3}\t\t{2}", vr, torque, diff, direction);
-                    System.Diagnostics.Trace.WriteLine(log);
+                    //System.Diagnostics.Trace.WriteLine(log);
 
                     var command = String.Format(testSetup.MoveCommand, direction, torque);
-                    serialPort.Write("{" + command + "}");
+                    serialPort.Write("{P0}");
+                    //serialPort.Write("{" + command + "}");
 
                 }
             }
@@ -333,8 +334,9 @@ namespace WindowsFormsApp1
         private void SerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
         {
             SerialPort sp = sender as SerialPort;
-            sp.ReadExisting();
-            //System.Diagnostics.Trace.WriteLine("SP: " + sp.ReadExisting());
+            //sp.ReadExisting();
+
+            System.Diagnostics.Trace.WriteLine("SP: " + sp.ReadExisting());
             //serialPort.Write("{M0,F,100}");
         }
 
