@@ -11,6 +11,19 @@ namespace WindowsFormsApp1
     {
         private VoltageRatioInput input;
         private string name;
+        private double val =0;
+
+        public double Value
+        {
+            get
+            {
+                return val;
+            }
+            set
+            {
+                val = Value;
+            }
+        }
 
         public string Name
         {
