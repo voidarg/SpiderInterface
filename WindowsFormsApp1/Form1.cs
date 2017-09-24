@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
@@ -14,13 +15,12 @@ namespace WindowsFormsApp1
     public partial class Form1 : Form
     {
         int position = 0;
-        Dictionary<int, int> TargetLoads;
-        Dictionary<int, int> MotorsCPort;
         Dictionary<int, int[]> AxisLimits;
-        List<SerialPort> listofPorts = new List<SerialPort>();
-        List<TextBox> listOfEdits = new List<TextBox>();
+        List<TextBox> listOfLEdits = new List<TextBox>();
+        List<TextBox> listOfPEdits = new List<TextBox>();
 
         PhidgetReciver phidgetReciver = new PhidgetReciver();
+        ArduinoReciver arduinoReciver = new ArduinoReciver();
 
         public class PhidgetReciver
         {
@@ -31,7 +31,7 @@ namespace WindowsFormsApp1
             public bool abort { get; set; }
             public double getValueOf(int index)
             {
-                return listOfPhidgets[index].Value;
+                return listOfPhidgets[index].value;
             }
             public int Count()
             {
@@ -42,7 +42,8 @@ namespace WindowsFormsApp1
                 // setup phidget bridge events
                 for (int i = 0; i < listOfPhidgets.Count; i++)
                 {
-                    listOfPhidgets[i].Input.DataInterval = listOfPhidgets[i].Input.MinDataInterval;
+                    listOfPhidgets[i].Input.DataInterval = listOfPhidgets[i].Input.MinDataInterval;//????????
+                    //listOfPhidgets[i].Input.VoltageRatioChangeTrigger = listOfPhidgets[i].Input.MinDataInterval;//????????
                     listOfPhidgets[i].Input.VoltageRatioChangeTrigger = 0;
                     listOfPhidgets[i].Input.BridgeGain = BridgeGain.Gain_128x;
                     listOfPhidgets[i].Input.BridgeEnabled = true;
@@ -58,9 +59,10 @@ namespace WindowsFormsApp1
             }
             public void ThreadRun()
             {
+                Phidget.InvokeEventCallbacks = true;
                 initializePhidgetsControl();
                 System.Diagnostics.Trace.WriteLine("PhidgetReciver started");
-                while (abort)
+                while (!abort)
                 {
                     Thread thr = Thread.CurrentThread;
                     System.Diagnostics.Trace.WriteLine("PhidgetReciver is ok");
@@ -106,6 +108,7 @@ namespace WindowsFormsApp1
                 hashMap.Add(hashMap.Count, input.GetHashCode());
                 var info = new InputInfo(input);
                 listOfPhidgets.Add(new InputInfo(input));
+                System.Diagnostics.Trace.WriteLine("PhidgetReciver OnPhidgetAttached "+ input.DeviceSerialNumber +" " + input.Channel);
             }
             private void Input_PropertyChange(object sender, PropertyChangeEventArgs e)
             {
@@ -144,60 +147,16 @@ namespace WindowsFormsApp1
                 int curPhidget = -1;
                 // update displayed value
                 var vr = e.VoltageRatio * 1000000;
+                
                 {
                     var targetHash = sender.GetHashCode();
-                   /* if (targetHash == hashMap[0])
+                    int i = 0;
+                    for (; hashMap[i] != targetHash ; i++)
                     {
-                        currentLoad1.Text = vr.ToString("#.##");
+                        if (i >= hashMap.Count) throw new NotImplementedException("wrongHash");
                     }
-                    else if (targetHash == hashMap[1])
-                    {
-                        currentLoad2.Text = vr.ToString("#.##");
-                    }
-                    else if (targetHash == hashMap[2])
-                    {
-                        currentLoad3.Text = vr.ToString("#.##");
-                    }
-                    else if (targetHash == hashMap[3])
-                    {
-                        currentLoad4.Text = vr.ToString("#.##");
-                    }
-                    else if (targetHash == hashMap[4])
-                    {
-                        currentLoad5.Text = vr.ToString("#.##");
-                    }
-                    else if (targetHash == hashMap[5])
-                    {
-                        currentLoad6.Text = vr.ToString("#.##");
-                    }
-                    else if (targetHash == hashMap[6])
-                    {
-                        currentLoad7.Text = vr.ToString("#.##");
-                    }
-                    else if (targetHash == hashMap[7])
-                    {
-                        currentLoad8.Text = vr.ToString("#.##");
-                    }
-                    else if (targetHash == hashMap[8])
-                    {
-                        currentLoad9.Text = vr.ToString("#.##");
-                    }
-                    else if (targetHash == hashMap[9])
-                    {
-                        currentLoad10.Text = vr.ToString("#.##");
-                    }
-                    else if (targetHash == hashMap[10])
-                    {
-                        currentLoad11.Text = vr.ToString("#.##");
-                    }
-                    else if (targetHash == hashMap[11])
-                    {
-                        currentLoad12.Text = vr.ToString("#.##");
-                    }
-                    else
-                    {
-                        throw new NotImplementedException("wrongHash");
-                    }*/
+                    
+                    listOfPhidgets[i].value = vr;
                     Application.DoEvents();
                 }
 
@@ -278,11 +237,116 @@ namespace WindowsFormsApp1
                 */
             }
         }
+        public class ArduinoReciver
+        {
+            Dictionary<int, int> MotorsCPort = new Dictionary<int, int>();
+            Dictionary<int, int> AxisPosition = new Dictionary<int, int>();
+            List<SerialPort> listofPorts = new List<SerialPort>();
+
+            public bool abort { get; set; }
+
+            public double getValueOf(int index)
+            {
+                return AxisPosition[index];
+            }
+            public int getMotorPort(int index)
+            {
+                return MotorsCPort[index];
+            }
+            public int Count()
+            {
+                return AxisPosition.Count;
+            }
+            public void Start()
+            {
+                int lastPort = 0;
+                for (int i = 0; i < MotorsCPort.Count; i++)
+                {
+                    if (lastPort < MotorsCPort[i])
+                    {
+                        lastPort = MotorsCPort[i];
+                        SerialPort serialPort = new SerialPort();
+                        listofPorts.Add(serialPort);
+                        listofPorts[i].BaudRate = 115200;
+                        listofPorts[i].PortName = "COM" + MotorsCPort[i];
+                        listofPorts[i].DataReceived += SerialPort_DataReceived;
+                        listofPorts[i].ErrorReceived += SerialPort_ErrorReceived;
+                        listofPorts[i].DtrEnable = true;
+                        listofPorts[i].Open();
+                        listofPorts[i].ReadExisting();
+                    }
+                }
+            }
+            public void Stop()
+            {
+                for (int i = 0; i < listofPorts.Count; i++)
+                {
+                    listofPorts[i].Close();
+                }
+            }
+            bool initializeArduinoDevices()
+            {
+                for (int i = 0; i < 12; i++)
+                {
+                    MotorsCPort.Add(i,4);
+                }
+                for (int i = 0; i < MotorsCPort.Count; i++)
+                {
+                    AxisPosition.Add(i, 0);
+                }
+                return true;
+            }
+            public void ThreadRun()
+            {
+                initializeArduinoDevices();
+                System.Diagnostics.Trace.WriteLine("ArduinoReciver started");
+                Thread.Sleep(1000);
+                while (!abort)
+                {
+                    Thread thr = Thread.CurrentThread;
+                    System.Diagnostics.Trace.WriteLine("ArduinoReciver is ok");
+                    for (int i = 0; i < listofPorts.Count; i++)
+                    {
+                        listofPorts[i].Write("{M0,F,0}");
+                        listofPorts[i].Write("{M1,F,0}");
+                        listofPorts[i].Write("{M2,F,0}");
+                        listofPorts[i].Write("{M3,F,0}");
+                        listofPorts[i].Write("{M4,F,0}");
+                        listofPorts[i].Write("{M5,F,0}");
+                    }
+                }
+                System.Diagnostics.Trace.WriteLine("ArduinoReciver stopped");
+            }
+
+            private void SerialPort_ErrorReceived(object sender, SerialErrorReceivedEventArgs e)
+            {
+                throw new NotImplementedException();
+            }
+
+            private void SerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
+            {
+                SerialPort sp = sender as SerialPort;
+
+                if (sp.IsOpen)
+                {
+                    var data = sp.ReadExisting();
+                    
+                    MatchCollection matchMtr = Regex.Matches(data, @"{M(\d+),P(\d+)}");
+                    foreach (Match m in matchMtr)
+                    {
+                        string[] tmp = m.ToString().Split(new string[] { ",P" }, StringSplitOptions.None);
+                        AxisPosition[int.Parse(tmp[0].Remove(0, 2))] = int.Parse(tmp[1].TrimEnd('}'));
+                    }
+                }
+            }
+
+        }
+
 
         class TestSetup
         {
             public int ArduinoPort { get; set; }
-            public InputInfo PhidgetBridge { get; set; }
+            public int Phidget { get; set; }
             public int MotorId { get; set; }
             public double TargetLoad { get; set; }
             public int MinPos { get; set; }
@@ -303,6 +367,13 @@ namespace WindowsFormsApp1
 
         public Form1()
         {
+
+            for (int i = 0; i < 12; i++)
+            {
+                if (AxisLimits == null) AxisLimits = new Dictionary<int, int[]>();
+                int[] tmp = new int[2] { 0, 1000 };
+                AxisLimits.Add(i, tmp);
+            }
             InitializeComponent();
         }
 
@@ -310,41 +381,48 @@ namespace WindowsFormsApp1
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            Phidget.InvokeEventCallbacks = true;
-            initializeArduinoDevices();
             Thread PhidgetTread = new Thread(new ThreadStart(phidgetReciver.ThreadRun));
+            Thread ArduinoTread = new Thread(new ThreadStart(arduinoReciver.ThreadRun));
             System.Diagnostics.Trace.WriteLine("Before start thread");
             PhidgetTread.Name = "PhidgetTread";
-            listOfEdits.Add(currentLoad1);
-            
-        }
+            ArduinoTread.Name = "ArduinoTread";
 
-
-        bool initializeArduinoDevices()
-        {
-            // initialize arduino device list
-            var devices = OS.GetSerialDevices();
-            if (devices.Count > 0)
+            phidgetReciver.abort = false;
+            arduinoReciver.abort = false;
+            PhidgetTread.Start();
+            ArduinoTread.Start();
             {
-                foreach (var device in devices)
-                {
-                    arduinoDevices.Items.Add(device);
-                }
+                listOfLEdits.Add(currentLoad1);
+                listOfLEdits.Add(currentLoad2);
+                listOfLEdits.Add(currentLoad3);
+                listOfLEdits.Add(currentLoad4);
+                listOfLEdits.Add(currentLoad5);
+                listOfLEdits.Add(currentLoad6);
+                listOfLEdits.Add(currentLoad7);
+                listOfLEdits.Add(currentLoad8);
+                listOfLEdits.Add(currentLoad9);
+                listOfLEdits.Add(currentLoad10);
+                listOfLEdits.Add(currentLoad11);
+                listOfLEdits.Add(currentLoad12);
             }
-            else
             {
-                arduinoDevices.Items.Add(new ArduinoInfo("No devices found", ""));
+                listOfPEdits.Add(currPos1);
+                listOfPEdits.Add(currPos2);
+                listOfPEdits.Add(currPos3);
+                listOfPEdits.Add(currPos4);
+                listOfPEdits.Add(currPos5);
+                listOfPEdits.Add(currPos6);
+                listOfPEdits.Add(currPos7);
+                listOfPEdits.Add(currPos8);
+                listOfPEdits.Add(currPos9);
+                listOfPEdits.Add(currPos10);
+                listOfPEdits.Add(currPos11);
+                listOfPEdits.Add(currPos12);
             }
-            arduinoDevices.SelectedIndex = 0;
-            return true;
+
         }
-
-
-
-
 
         
-
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
             StopButton_Click(null,null);
@@ -353,10 +431,13 @@ namespace WindowsFormsApp1
 
         private void StartButton_Click(object sender, EventArgs e)
         {
+            phidgetReciver.Start();
+            arduinoReciver.Start();
+
             for (int i = 0; i < phidgetReciver.Count(); i++)
             {
                 TestSetup testSetup = new TestSetup();
-                testSetup.ArduinoPort = MotorsCPort[i];
+                testSetup.ArduinoPort = arduinoReciver.getMotorPort(i);
                 testSetup.MotorId = i;
                 testSetup.TargetLoad = 0;
                 testSetup.LastDiff = 0;
@@ -373,76 +454,41 @@ namespace WindowsFormsApp1
             }
 
 
-
+            
             // configure serial port
-            int lastPort = 0;
-            for(int i = 0; i < MotorsCPort.Count; i++)
-            {
-                if (lastPort < MotorsCPort[i])
-                {
-                    lastPort = MotorsCPort[i];
-                    SerialPort serialPort = new SerialPort();
-                    listofPorts.Add(serialPort);
-                    listofPorts[i].BaudRate = 115200;
-                    listofPorts[i].PortName = "COM"+MotorsCPort[i];
-                    listofPorts[i].DataReceived += SerialPort_DataReceived;    
-                    listofPorts[i].ErrorReceived += SerialPort_ErrorReceived;
-                    listofPorts[i].DtrEnable = true;
-                    listofPorts[i].Open();
-                    listofPorts[i].ReadExisting();
-                }
-            }
+
             StartButton.Enabled = false;
             StopButton.Enabled = true;
+            while (true)
+            {
+                for (int i = 0; i < phidgetReciver.Count(); i++)
+                {
+                    listOfLEdits[i].Text = phidgetReciver.getValueOf(i).ToString("#.##");
+                }
+                for (int i = 0; i < arduinoReciver.Count(); i++)
+                {
+                    listOfPEdits[i].Text = arduinoReciver.getValueOf(i).ToString("#.##");
+                }
+                Thread.Sleep(10);
+                Application.DoEvents();
+            }
         }
 
 
 
        
 
-        private void SerialPort_ErrorReceived(object sender, SerialErrorReceivedEventArgs e)
-        {
-            throw new NotImplementedException();
-        }
-
-        private void SerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
-        {
-            SerialPort sp = sender as SerialPort;
-
-            if (sp.IsOpen)
-            {
-                var data = sp.ReadExisting();
-
-                System.Text.RegularExpressions.Regex re = new System.Text.RegularExpressions.Regex(@"P(\d+)}");
-                var match = re.Match(data);
-                if (match.Success)
-                {
-                    for (int ctr = 1; ctr < match.Groups.Count; ctr++)
-                    {
-                        position = int.Parse(match.Groups[ctr].Value);
-                        currentPosition.Invoke(
-                            (MethodInvoker)(() => currentPosition.Text = match.Groups[ctr].Value));
-
-                    }
-                }
-
-            }
-
-            //System.Diagnostics.Trace.WriteLine("SP: " + match.Captures[0].Value);
-            //serialPort.Write("{M0,F,100}");
-        }
-
         private void StopButton_Click(object sender, EventArgs e)
         {
+            phidgetReciver.Stop();
+            arduinoReciver.Stop();
             for (int i = 0; i < listOfSetups.Count; i++)
             {
                 var command = String.Format(listOfSetups[i].MoveCommand, "B", 0);
-                listofPorts[MotorsCPort[i]].Write("{" + command + "}");
+                //arduinoReciver.
+                //listofPorts[MotorsCPort[i]].Write("{" + command + "}");
             }
-            for (int i = 0; i < listofPorts.Count; i++)
-            {
-                listofPorts[MotorsCPort[i]].Close();
-            }
+
             // System.Threading.Thread.Sleep(500);
 
 
