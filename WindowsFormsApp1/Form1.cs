@@ -14,13 +14,23 @@ namespace WindowsFormsApp1
 {
     public partial class Form1 : Form
     {
-        int position = 0;
-        Dictionary<int, int[]> AxisLimits;
+        int lastPort = 0;
+        bool abort = false;
+        Dictionary<int, int> MotorsCPort = new Dictionary<int, int>();
         List<TextBox> listOfLEdits = new List<TextBox>();
         List<TextBox> listOfPEdits = new List<TextBox>();
+        List<TextBox> listOfTEdits = new List<TextBox>();
+        List<SerialPort> listofPorts = new List<SerialPort>();
+
+        Thread PhidgetTread;
+        Thread ReciverTread;
+        Thread SenderTread;
+        Thread CalculatorTread;
 
         PhidgetReciver phidgetReciver = new PhidgetReciver();
-        ArduinoReciver arduinoReciver = new ArduinoReciver();
+        MotionCalculator motionCalculator = new MotionCalculator();
+        ArduinoReciver arduinoReciver;
+        ArduinoSender arduinoSender;
 
         public class PhidgetReciver
         {
@@ -54,7 +64,7 @@ namespace WindowsFormsApp1
                 // setup phidget bridge events
                 for (int i = 0; i < listOfPhidgets.Count; i++)
                 {
-                    listOfPhidgets[i].Input.BridgeEnabled = false;
+                    //listOfPhidgets[i].Input.BridgeEnabled = false;
                 }
             }
             public void ThreadRun()
@@ -64,7 +74,6 @@ namespace WindowsFormsApp1
                 System.Diagnostics.Trace.WriteLine("PhidgetReciver started");
                 while (!abort)
                 {
-                    Thread thr = Thread.CurrentThread;
                     System.Diagnostics.Trace.WriteLine("PhidgetReciver is ok");
                     Thread.Sleep(1000);
                 }
@@ -160,98 +169,23 @@ namespace WindowsFormsApp1
                     Application.DoEvents();
                 }
 
-                if (firstPick)
-                {
-                    zero = vr;
-                    firstPick = false;
-                }
-                var powerLimit = 50;
-                var step = 1;
 
-                // request position
-                /* serialPort.Write(testSetup.PositionRequestCommand);
-                    var diff = (int)Math.Round(testSetup.TargetLoad - vr+zero);
-            */
-                //var diff2 = (int)Math.Round(testSetup.LastRead - vr);
-
-                //testSetup.LastRead = (int)vr;
-                // testSetup.Torque += (int)diff /*testSetup.Koeff*/;
-
-
-                /*using (var sw = System.IO.File.AppendText("c:\\tmp\\runlog.csv"))
-                {
-                    sw.WriteLine(log);
-                }*/
-                /*
-                testSetup.Torque += diff / 10;
-                if (testSetup.Torque > powerLimit)
-                {
-                    testSetup.Torque = powerLimit;
-                }
-                else if (testSetup.Torque < (-1 * powerLimit))
-                {
-                    testSetup.Torque = (-1 * powerLimit);
-                }
-
-                if (testSetup.Torque > 0)   // go back
-                {
-                    direction = 'B';
-                }
-                else if (testSetup.Torque < 0) // go forward
-                {
-                    direction = 'F';
-                }
-                else
-                {
-                    direction = 'S';
-                }*/
-                /*
-                if (direction != 'S')
-                {
-                    var torque = Math.Abs(testSetup.Torque);
-                    //  var log = String.Format("{0}\t\t{1}:{3}\t\t{2}", vr, torque, diff, direction);
-                    //   System.Diagnostics.Trace.WriteLine(log);
-
-                    var command = String.Format(testSetup.MoveCommand, direction, torque);
-                    if (serialPort.IsOpen)
-                    { 
-                        serialPort.Write("{P0}");
-                    }
-
-                    currentTorque.Text = testSetup.Torque.ToString();
-                    currentPosition.Text = position.ToString();
-
-                    if (position > int.Parse(maxPos.Text))
-                    {
-                        serialPort.Write("{M0,F," + ((position - int.Parse(maxPos.Text)) * 1).ToString() + "}");
-                    }
-                    else if (position < int.Parse(minPos.Text))
-                    {
-                        serialPort.Write("{M0,B," + ((int.Parse(minPos.Text) - position) * 1).ToString() + "}");
-                    }
-                    else
-                    {
-                        serialPort.Write("{" + command + "}");
-                    }
-                }
-                */
             }
         }
         public class ArduinoReciver
         {
-            Dictionary<int, int> MotorsCPort = new Dictionary<int, int>();
             Dictionary<int, int> AxisPosition = new Dictionary<int, int>();
-            List<SerialPort> listofPorts = new List<SerialPort>();
+            List<SerialPort> m_listofPorts;
+            public ArduinoReciver(ref List<SerialPort> _listofPorts)
+            {
+                m_listofPorts = _listofPorts;
+            }
 
             public bool abort { get; set; }
 
-            public double getValueOf(int index)
+            public int getValueOf(int index)
             {
                 return AxisPosition[index];
-            }
-            public int getMotorPort(int index)
-            {
-                return MotorsCPort[index];
             }
             public int Count()
             {
@@ -259,40 +193,24 @@ namespace WindowsFormsApp1
             }
             public void Start()
             {
-                int lastPort = 0;
-                for (int i = 0; i < MotorsCPort.Count; i++)
+                for (int i = 0; i < m_listofPorts.Count; i++)
                 {
-                    if (lastPort < MotorsCPort[i])
-                    {
-                        lastPort = MotorsCPort[i];
-                        SerialPort serialPort = new SerialPort();
-                        listofPorts.Add(serialPort);
-                        listofPorts[i].BaudRate = 115200;
-                        listofPorts[i].PortName = "COM" + MotorsCPort[i];
-                        listofPorts[i].DataReceived += SerialPort_DataReceived;
-                        listofPorts[i].ErrorReceived += SerialPort_ErrorReceived;
-                        listofPorts[i].DtrEnable = true;
-                        listofPorts[i].Open();
-                        listofPorts[i].ReadExisting();
-                    }
+                    m_listofPorts[i].DataReceived += SerialPort_DataReceived;
+                    m_listofPorts[i].ErrorReceived += SerialPort_ErrorReceived;
                 }
             }
             public void Stop()
             {
-                for (int i = 0; i < listofPorts.Count; i++)
+                for (int i = 0; i < m_listofPorts.Count; i++)
                 {
-                    listofPorts[i].Close();
+                    //listofPorts[i].Close();
                 }
             }
             bool initializeArduinoDevices()
             {
                 for (int i = 0; i < 12; i++)
                 {
-                    MotorsCPort.Add(i,4);
-                }
-                for (int i = 0; i < MotorsCPort.Count; i++)
-                {
-                    AxisPosition.Add(i, 0);
+                    AxisPosition.Add(i, 1);
                 }
                 return true;
             }
@@ -300,20 +218,11 @@ namespace WindowsFormsApp1
             {
                 initializeArduinoDevices();
                 System.Diagnostics.Trace.WriteLine("ArduinoReciver started");
-                Thread.Sleep(1000);
+                Thread.Sleep(2000);
                 while (!abort)
                 {
-                    Thread thr = Thread.CurrentThread;
                     System.Diagnostics.Trace.WriteLine("ArduinoReciver is ok");
-                    for (int i = 0; i < listofPorts.Count; i++)
-                    {
-                        listofPorts[i].Write("{M0,F,0}");
-                        listofPorts[i].Write("{M1,F,0}");
-                        listofPorts[i].Write("{M2,F,0}");
-                        listofPorts[i].Write("{M3,F,0}");
-                        listofPorts[i].Write("{M4,F,0}");
-                        listofPorts[i].Write("{M5,F,0}");
-                    }
+                    Thread.Sleep(1000);
                 }
                 System.Diagnostics.Trace.WriteLine("ArduinoReciver stopped");
             }
@@ -330,49 +239,192 @@ namespace WindowsFormsApp1
                 if (sp.IsOpen)
                 {
                     var data = sp.ReadExisting();
-                    
                     MatchCollection matchMtr = Regex.Matches(data, @"{M(\d+),P(\d+)}");
                     foreach (Match m in matchMtr)
                     {
                         string[] tmp = m.ToString().Split(new string[] { ",P" }, StringSplitOptions.None);
+                        System.Diagnostics.Trace.WriteLine(int.Parse(tmp[0].Remove(0, 2)) + " " + int.Parse(tmp[1].TrimEnd('}')));
                         AxisPosition[int.Parse(tmp[0].Remove(0, 2))] = int.Parse(tmp[1].TrimEnd('}'));
                     }
                 }
             }
 
         }
-
-
-        class TestSetup
+        public class ArduinoSender
         {
-            public int ArduinoPort { get; set; }
-            public int Phidget { get; set; }
-            public int MotorId { get; set; }
-            public double TargetLoad { get; set; }
-            public int MinPos { get; set; }
-            public int MaxPos { get; set; }
+            Dictionary<int, TorqueAndDir> AxisTorque = new Dictionary<int, TorqueAndDir>();
+            Dictionary<int, char> AxisDir = new Dictionary<int, char>();
+            List<SerialPort> m_listofPorts;
+            public ArduinoSender(ref List<SerialPort> _listofPorts)
+            {
+                m_listofPorts = _listofPorts;
+            }
 
-            public int Torque { get; set; }
-            public int Koeff { get; set; }
-            public double LastRead { get; set; }
-            public int LastDiff { get; set; }
-            public char Direction { get; set; }
-            public string PositionRequestCommand { get; set; }
-            public string MoveCommand { get; set; }
-            public bool FirstPick { get;  set; }
+            public bool abort { get; set; }
+
+            public void setValueOf(int index,int val,char dir)
+            {
+                AxisTorque[index].Torque = val;
+                AxisTorque[index].Direction = dir;
+            }
+            public int Count()
+            {
+                return AxisTorque.Count;
+            }
+            public void Start()
+            {
+            }
+            public void Stop()
+            {
+                for (int i = 0; i < m_listofPorts.Count; i++)
+                {
+                    //listofPorts[i].Close();
+                }
+            }
+            bool initializeArduinoDevices()
+            {
+                for (int i = 0; i < 12; i++)
+                {
+                    TorqueAndDir tmp = new TorqueAndDir();
+                    tmp.Torque = 0;
+                    tmp.Direction = 'S';
+                    AxisTorque.Add(i, tmp);
+                }
+                return true;
+            }
+            public void ThreadRun()
+            {
+                initializeArduinoDevices();
+                System.Diagnostics.Trace.WriteLine("ArduinoSender started");
+                Thread.Sleep(2000);
+                while (!abort)
+                {
+                    Thread.Sleep(1);
+                    System.Diagnostics.Trace.WriteLine("ArduinoSender is ok");
+                    for (int i = 0; i < AxisTorque.Count; i++)
+                    {
+                        string tmp = ("{M" + i.ToString() + "," + AxisTorque[i].Direction + "," + AxisTorque[i].Torque.ToString() + "}");
+                        m_listofPorts[0].Write(tmp);
+                    }
+                }
+                System.Diagnostics.Trace.WriteLine("ArduinoSender stopped");
+            }
         }
 
-        List<TestSetup> listOfSetups = new List<TestSetup>();
+        public class MotionCalculator
+        {
+
+
+            Dictionary<int, int[]> AxisLimits;
+            List<TestSetup> listOfSetups = new List<TestSetup>();
+
+            public bool abort { get; set; }
+
+            public TestSetup getSetupAt(int index)
+            {
+                return listOfSetups[index];
+            }
+            public int Count()
+            {
+                return listOfSetups.Count;
+            }
+            public void Start()
+            {
+            }
+            public void Stop()
+            {
+            }
+            bool initializeCalculator()
+            {
+                for (int i = 0; i < 12; i++)
+                {
+                    if (AxisLimits == null) AxisLimits = new Dictionary<int, int[]>();
+                    int[] tmp = new int[2] { 0, 1000 };
+                    AxisLimits.Add(i, tmp);
+                }
+                for (int i = 0; i < AxisLimits.Count; i++)
+                {
+                    TestSetup testSetup = new TestSetup();
+                    testSetup.MotorId = i;
+                    testSetup.TargetLoad = 0;
+                    testSetup.LastDiff = 0;
+                    testSetup.LastLoad = testSetup.TargetLoad;
+                    testSetup.Load = testSetup.TargetLoad;
+                    testSetup.ZeroLoad = testSetup.TargetLoad;
+                    testSetup.MinPos = AxisLimits[i][0];
+                    testSetup.MaxPos = AxisLimits[i][1];
+                    testSetup.FirstPick = true;
+                    testSetup.PositionRequestCommand = "{P" + testSetup.MotorId.ToString() + "}";
+                    testSetup.MoveCommand = "M" + testSetup.MotorId.ToString() + ",{0},{1}";
+                    testSetup.Torque = 0;
+                    testSetup.TorqueLimit = 50;
+                    testSetup.Direction = 'S';
+                    testSetup.Koeff = 1;
+                    listOfSetups.Add(testSetup);
+                }
+                return true;
+            }
+            public void ThreadRun()
+            {
+                initializeCalculator();
+                System.Diagnostics.Trace.WriteLine("MotionCalculator started");
+                for (int i = 0; i < listOfSetups.Count; i++)
+                {
+                    if (listOfSetups[i].FirstPick)
+                    {
+                        listOfSetups[i].ZeroLoad = listOfSetups[i].Load;
+                        listOfSetups[i].FirstPick = false;
+                    }
+                }
+                while (!abort)
+                {
+                    System.Diagnostics.Trace.WriteLine("MotionCalculator is ok");
+                    Thread.Sleep(10);
+                    for (int i = 0; i < listOfSetups.Count; i++)
+                    {
+                    // request position
+                        var diff = (int)Math.Round(listOfSetups[i].TargetLoad - listOfSetups[i].Load+ listOfSetups[i].ZeroLoad);
+                        listOfSetups[i].LastLoad = (int)listOfSetups[i].Load;
+                        listOfSetups[i].Torque += (int)diff;
+                        /*using (var sw = System.IO.File.AppendText("c:\\tmp\\runlog.csv"))
+                        {
+                            sw.WriteLine(log);
+                        }*/
+                        listOfSetups[i].Torque += diff / 10;
+                        if (listOfSetups[i].Torque > listOfSetups[i].TorqueLimit)
+                        {
+                            listOfSetups[i].Torque = listOfSetups[i].TorqueLimit;
+                        }
+                        else if (listOfSetups[i].Torque < (-1 * listOfSetups[i].TorqueLimit))
+                        {
+                            listOfSetups[i].Torque = (-1 * listOfSetups[i].TorqueLimit);
+                        }
+                        if (listOfSetups[i].Torque > 0)   // go back
+                        {
+                            listOfSetups[i].Direction = 'B';
+                        }
+                        else if (listOfSetups[i].Torque < 0) // go forward
+                        {
+                            listOfSetups[i].Direction = 'F';
+                        }
+                        else
+                        {
+                            listOfSetups[i].Direction = 'S';
+                        }
+                        listOfSetups[i].Torque = Math.Abs(listOfSetups[i].Torque);
+                    }
+                }
+                System.Diagnostics.Trace.WriteLine("MotionCalculator stopped");
+            }
+        }
+
 
 
         public Form1()
         {
-
             for (int i = 0; i < 12; i++)
             {
-                if (AxisLimits == null) AxisLimits = new Dictionary<int, int[]>();
-                int[] tmp = new int[2] { 0, 1000 };
-                AxisLimits.Add(i, tmp);
+                MotorsCPort.Add(i, 4);
             }
             InitializeComponent();
         }
@@ -381,16 +433,41 @@ namespace WindowsFormsApp1
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            Thread PhidgetTread = new Thread(new ThreadStart(phidgetReciver.ThreadRun));
-            Thread ArduinoTread = new Thread(new ThreadStart(arduinoReciver.ThreadRun));
+//            for (int i = 0; i < MotorsCPort.Count; i++)
+//            {
+//                if (lastPort < MotorsCPort[i])
+//                {
+//                    lastPort = MotorsCPort[i];
+                    SerialPort serialPort = new SerialPort();
+                    listofPorts.Add(serialPort);
+                    listofPorts[0].BaudRate = 921600;
+                    listofPorts[0].PortName = "COM" + MotorsCPort[0];
+                    listofPorts[0].DtrEnable = true;
+                    listofPorts[0].Open();
+                    listofPorts[0].ReadExisting();
+//                }
+//            }
+            abort = false;
+            arduinoReciver = new ArduinoReciver(ref listofPorts);
+            arduinoSender = new ArduinoSender(ref listofPorts);
+            PhidgetTread = new Thread(new ThreadStart(phidgetReciver.ThreadRun));
+            ReciverTread = new Thread(new ThreadStart(arduinoReciver.ThreadRun));
+            SenderTread = new Thread(new ThreadStart(arduinoSender.ThreadRun));
+            CalculatorTread = new Thread(new ThreadStart(motionCalculator.ThreadRun));
             System.Diagnostics.Trace.WriteLine("Before start thread");
             PhidgetTread.Name = "PhidgetTread";
-            ArduinoTread.Name = "ArduinoTread";
+            ReciverTread.Name = "ReciverTread";
+            SenderTread.Name = "SenderTread";
+            CalculatorTread.Name = "CalculatorTread";
 
             phidgetReciver.abort = false;
             arduinoReciver.abort = false;
+            arduinoSender.abort = false;
+            motionCalculator.abort = false;
             PhidgetTread.Start();
-            ArduinoTread.Start();
+            ReciverTread.Start();
+            SenderTread.Start();
+            CalculatorTread.Start();
             {
                 listOfLEdits.Add(currentLoad1);
                 listOfLEdits.Add(currentLoad2);
@@ -419,6 +496,20 @@ namespace WindowsFormsApp1
                 listOfPEdits.Add(currPos11);
                 listOfPEdits.Add(currPos12);
             }
+            {
+                listOfTEdits.Add(currTorque1);
+                listOfTEdits.Add(currTorque2);
+                listOfTEdits.Add(currTorque3);
+                listOfTEdits.Add(currTorque4);
+                listOfTEdits.Add(currTorque5);
+                listOfTEdits.Add(currTorque6);
+                listOfTEdits.Add(currTorque7);
+                listOfTEdits.Add(currTorque8);
+                listOfTEdits.Add(currTorque9);
+                listOfTEdits.Add(currTorque10);
+                listOfTEdits.Add(currTorque11);
+                listOfTEdits.Add(currTorque12);
+            }
 
         }
 
@@ -426,6 +517,19 @@ namespace WindowsFormsApp1
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
             StopButton_Click(null,null);
+            phidgetReciver.abort = true;
+            arduinoReciver.abort = true;
+            arduinoSender.abort = true;
+            motionCalculator.abort = true;
+            abort = true;
+            PhidgetTread.Join();
+            ReciverTread.Join();
+            SenderTread.Join();
+            CalculatorTread.Join();
+            for (int i = 0; i < listofPorts.Count; i++)
+            {
+                listofPorts[i].Close();
+            }
         }
        
 
@@ -433,61 +537,38 @@ namespace WindowsFormsApp1
         {
             phidgetReciver.Start();
             arduinoReciver.Start();
-
-            for (int i = 0; i < phidgetReciver.Count(); i++)
-            {
-                TestSetup testSetup = new TestSetup();
-                testSetup.ArduinoPort = arduinoReciver.getMotorPort(i);
-                testSetup.MotorId = i;
-                testSetup.TargetLoad = 0;
-                testSetup.LastDiff = 0;
-                testSetup.LastRead = testSetup.TargetLoad;
-                testSetup.MinPos = AxisLimits[i][0];
-                testSetup.MaxPos = AxisLimits[i][1];
-                testSetup.FirstPick = true;
-                testSetup.PositionRequestCommand = "{P" + testSetup.MotorId.ToString() + "}";
-                testSetup.MoveCommand = "M" + testSetup.MotorId.ToString() + ",{0},{1}";
-                testSetup.Torque = 0;
-                testSetup.Direction = 'S';
-                testSetup.Koeff = 1;
-                listOfSetups.Add(testSetup);
-            }
-
-
-            
-            // configure serial port
+            arduinoSender.Start();
+            motionCalculator.Start();
 
             StartButton.Enabled = false;
             StopButton.Enabled = true;
-            while (true)
+            while (!abort)
             {
                 for (int i = 0; i < phidgetReciver.Count(); i++)
                 {
                     listOfLEdits[i].Text = phidgetReciver.getValueOf(i).ToString("#.##");
-                }
-                for (int i = 0; i < arduinoReciver.Count(); i++)
-                {
                     listOfPEdits[i].Text = arduinoReciver.getValueOf(i).ToString("#.##");
+                    listOfTEdits[i].Text = motionCalculator.getSetupAt(i).Direction + motionCalculator.getSetupAt(i).Torque.ToString("#.##");
+                    motionCalculator.getSetupAt(i).Load = phidgetReciver.getValueOf(i);
+                    motionCalculator.getSetupAt(i).Position = arduinoReciver.getValueOf(i);
+                    arduinoSender.setValueOf(i, motionCalculator.getSetupAt(i).Torque, motionCalculator.getSetupAt(i).Direction);
                 }
                 Thread.Sleep(10);
                 Application.DoEvents();
             }
         }
-
-
-
-       
-
+        
         private void StopButton_Click(object sender, EventArgs e)
         {
             phidgetReciver.Stop();
             arduinoReciver.Stop();
-            for (int i = 0; i < listOfSetups.Count; i++)
-            {
-                var command = String.Format(listOfSetups[i].MoveCommand, "B", 0);
+            motionCalculator.Stop();
+            //for (int i = 0; i < listOfSetups.Count; i++)
+            //{
+              //  var command = String.Format(listOfSetups[i].MoveCommand, "B", 0);
                 //arduinoReciver.
                 //listofPorts[MotorsCPort[i]].Write("{" + command + "}");
-            }
+            //}
 
             // System.Threading.Thread.Sleep(500);
 
@@ -495,5 +576,31 @@ namespace WindowsFormsApp1
             StartButton.Enabled = true;
             StopButton.Enabled = false;
         }
+    }
+    public class TestSetup
+    {
+        public int Phidget { get; set; }
+        public int MotorId { get; set; }
+        public double TargetLoad { get; set; }
+        public int MinPos { get; set; }
+        public int MaxPos { get; set; }
+
+        public int Torque { get; set; }
+        public int TorqueLimit { get; set; }
+        public int Koeff { get; set; }
+        public double LastLoad { get; set; }
+        public double Load { get; set; }
+        public double ZeroLoad { get; set; }
+        public int Position { get; set; }
+        public int LastDiff { get; set; }
+        public char Direction { get; set; }
+        public string PositionRequestCommand { get; set; }
+        public string MoveCommand { get; set; }
+        public bool FirstPick { get; set; }
+    }
+    public class TorqueAndDir
+    {
+        public int Torque { get; set; }
+        public char Direction { get; set; }
     }
 }
