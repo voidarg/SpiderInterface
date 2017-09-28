@@ -221,7 +221,6 @@ namespace WindowsFormsApp1
                 Thread.Sleep(2000);
                 while (!abort)
                 {
-                    System.Diagnostics.Trace.WriteLine("ArduinoReciver is ok");
                     Thread.Sleep(1000);
                 }
                 System.Diagnostics.Trace.WriteLine("ArduinoReciver stopped");
@@ -244,6 +243,7 @@ namespace WindowsFormsApp1
                     {
                         string[] tmp = m.ToString().Split(new string[] { ",P" }, StringSplitOptions.None);
                         System.Diagnostics.Trace.WriteLine(int.Parse(tmp[0].Remove(0, 2)) + " " + int.Parse(tmp[1].TrimEnd('}')));
+                        System.Diagnostics.Trace.WriteLine(int.Parse(tmp[0].Remove(0, 2)).ToString());
                         AxisPosition[int.Parse(tmp[0].Remove(0, 2))] = int.Parse(tmp[1].TrimEnd('}'));
                     }
                 }
@@ -287,7 +287,7 @@ namespace WindowsFormsApp1
                 {
                     TorqueAndDir tmp = new TorqueAndDir();
                     tmp.Torque = 0;
-                    tmp.Direction = 'S';
+                    tmp.Direction = 'F';
                     AxisTorque.Add(i, tmp);
                 }
                 return true;
@@ -300,10 +300,10 @@ namespace WindowsFormsApp1
                 while (!abort)
                 {
                     Thread.Sleep(1);
-                    System.Diagnostics.Trace.WriteLine("ArduinoSender is ok");
-                    for (int i = 0; i < AxisTorque.Count; i++)
+                    System.Diagnostics.Trace.WriteLine("ArduinoSender is ok:"+ AxisTorque.Count.ToString());
+                    for (int i = 11; i < AxisTorque.Count; i++)
                     {
-                        string tmp = ("{M" + i.ToString() + "," + AxisTorque[i].Direction + "," + AxisTorque[i].Torque.ToString() + "}");
+                        string tmp = ("{M" + 0 + "," + AxisTorque[i].Direction + "," + AxisTorque[i].Torque.ToString() + "}");
                         m_listofPorts[0].Write(tmp);
                     }
                 }
@@ -359,7 +359,7 @@ namespace WindowsFormsApp1
                     testSetup.Torque = 0;
                     testSetup.TorqueLimit = 50;
                     testSetup.Direction = 'S';
-                    testSetup.Koeff = 1;
+                    testSetup.Koeff = 00000.1;
                     listOfSetups.Add(testSetup);
                 }
                 return true;
@@ -368,6 +368,7 @@ namespace WindowsFormsApp1
             {
                 initializeCalculator();
                 System.Diagnostics.Trace.WriteLine("MotionCalculator started");
+                //Thread.Sleep(3000);
                 for (int i = 0; i < listOfSetups.Count; i++)
                 {
                     if (listOfSetups[i].FirstPick)
@@ -378,7 +379,7 @@ namespace WindowsFormsApp1
                 }
                 while (!abort)
                 {
-                    System.Diagnostics.Trace.WriteLine("MotionCalculator is ok");
+                    //System.Diagnostics.Trace.WriteLine("MotionCalculator is ok");
                     Thread.Sleep(10);
                     for (int i = 0; i < listOfSetups.Count; i++)
                     {
@@ -401,15 +402,15 @@ namespace WindowsFormsApp1
                         }
                         if (listOfSetups[i].Torque > 0)   // go back
                         {
-                            listOfSetups[i].Direction = 'B';
+                            listOfSetups[i].Direction = 'F';
                         }
                         else if (listOfSetups[i].Torque < 0) // go forward
                         {
-                            listOfSetups[i].Direction = 'F';
+                            listOfSetups[i].Direction = 'B';
                         }
                         else
                         {
-                            listOfSetups[i].Direction = 'S';
+                            listOfSetups[i].Direction = 'F';
                         }
                         listOfSetups[i].Torque = Math.Abs(listOfSetups[i].Torque);
                     }
@@ -424,7 +425,7 @@ namespace WindowsFormsApp1
         {
             for (int i = 0; i < 12; i++)
             {
-                MotorsCPort.Add(i, 4);
+                MotorsCPort.Add(i,3);
             }
             InitializeComponent();
         }
@@ -440,8 +441,9 @@ namespace WindowsFormsApp1
 //                    lastPort = MotorsCPort[i];
                     SerialPort serialPort = new SerialPort();
                     listofPorts.Add(serialPort);
-                    listofPorts[0].BaudRate = 921600;
+                    listofPorts[0].BaudRate = 115200;
                     listofPorts[0].PortName = "COM" + MotorsCPort[0];
+                    listofPorts[0].WriteTimeout = 100;
                     listofPorts[0].DtrEnable = true;
                     listofPorts[0].Open();
                     listofPorts[0].ReadExisting();
@@ -526,6 +528,12 @@ namespace WindowsFormsApp1
             ReciverTread.Join();
             SenderTread.Join();
             CalculatorTread.Join();
+            for (int i = 0; i < 12; i++)
+            {
+                string tmp = ("{M" + i + ",F,0}");
+                listofPorts[0].Write(tmp);
+            }
+
             for (int i = 0; i < listofPorts.Count; i++)
             {
                 listofPorts[i].Close();
@@ -587,7 +595,7 @@ namespace WindowsFormsApp1
 
         public int Torque { get; set; }
         public int TorqueLimit { get; set; }
-        public int Koeff { get; set; }
+        public double Koeff { get; set; }
         public double LastLoad { get; set; }
         public double Load { get; set; }
         public double ZeroLoad { get; set; }
