@@ -10,6 +10,7 @@ using Phidget22;
 using Phidget22.Events;
 using System.IO.Ports;
 using System.Threading;
+using System.Diagnostics;
 namespace WindowsFormsApp1
 {
     public partial class Form1 : Form
@@ -147,27 +148,20 @@ namespace WindowsFormsApp1
                 var info = new InputInfo(args.Channel as VoltageRatioInput);
                 listOfPhidgets.Remove(info);
             }
-            static long count = 0;
-            static bool firstPick = true;
-            static double zero = 0;
+
             private void Input_VoltageRatioChange(object sender, VoltageRatioInputVoltageRatioChangeEventArgs e)
             {
-                ++count;
-                int curPhidget = -1;
                 // update displayed value
                 var vr = e.VoltageRatio * 1000000;
                 
+                var targetHash = sender.GetHashCode();
+                int i = 0;
+                for (; hashMap[i] != targetHash ; i++)
                 {
-                    var targetHash = sender.GetHashCode();
-                    int i = 0;
-                    for (; hashMap[i] != targetHash ; i++)
-                    {
-                        if (i >= hashMap.Count) throw new NotImplementedException("wrongHash");
-                    }
-                    
-                    listOfPhidgets[i].value = vr;
-                    Application.DoEvents();
+                    if (i >= hashMap.Count) throw new NotImplementedException("wrongHash");
                 }
+                    
+                listOfPhidgets[i].value = vr;
 
 
             }
@@ -242,8 +236,8 @@ namespace WindowsFormsApp1
                     foreach (Match m in matchMtr)
                     {
                         string[] tmp = m.ToString().Split(new string[] { ",P" }, StringSplitOptions.None);
-                        System.Diagnostics.Trace.WriteLine(int.Parse(tmp[0].Remove(0, 2)) + " " + int.Parse(tmp[1].TrimEnd('}')));
-                        System.Diagnostics.Trace.WriteLine(int.Parse(tmp[0].Remove(0, 2)).ToString());
+                        //System.Diagnostics.Trace.WriteLine(int.Parse(tmp[0].Remove(0, 2)) + " " + int.Parse(tmp[1].TrimEnd('}')));
+                        //System.Diagnostics.Trace.WriteLine(int.Parse(tmp[0].Remove(0, 2)).ToString());
                         AxisPosition[int.Parse(tmp[0].Remove(0, 2))] = int.Parse(tmp[1].TrimEnd('}'));
                     }
                 }
@@ -300,17 +294,16 @@ namespace WindowsFormsApp1
                 while (!abort)
                 {
                     Thread.Sleep(1);
-                    System.Diagnostics.Trace.WriteLine("ArduinoSender is ok:"+ AxisTorque.Count.ToString());
-                    for (int i = 11; i < AxisTorque.Count; i++)
+                    //System.Diagnostics.Trace.WriteLine("ArduinoSender is ok:"+ AxisTorque.Count.ToString());
+                    for (int i = 10; i < AxisTorque.Count; i++)
                     {
-                        string tmp = ("{M" + 0 + "," + AxisTorque[i].Direction + "," + AxisTorque[i].Torque.ToString() + "}");
+                        string tmp = ("{M" + (i-10)+ "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
                         m_listofPorts[0].Write(tmp);
                     }
                 }
                 System.Diagnostics.Trace.WriteLine("ArduinoSender stopped");
             }
         }
-
         public class MotionCalculator
         {
 
@@ -357,9 +350,9 @@ namespace WindowsFormsApp1
                     testSetup.PositionRequestCommand = "{P" + testSetup.MotorId.ToString() + "}";
                     testSetup.MoveCommand = "M" + testSetup.MotorId.ToString() + ",{0},{1}";
                     testSetup.Torque = 0;
-                    testSetup.TorqueLimit = 50;
+                    testSetup.TorqueLimit = 75;
                     testSetup.Direction = 'S';
-                    testSetup.Koeff = 00000.1;
+                    testSetup.Koeff = 0.01;
                     listOfSetups.Add(testSetup);
                 }
                 return true;
@@ -368,14 +361,17 @@ namespace WindowsFormsApp1
             {
                 initializeCalculator();
                 System.Diagnostics.Trace.WriteLine("MotionCalculator started");
-                //Thread.Sleep(3000);
+                while (listOfSetups[0].Load == 0 || listOfSetups[listOfSetups.Count-1].Load == 0) ;
+                for (int j = 0; j < 100; j++)
+                {
+                    for (int i = 0; i < listOfSetups.Count; i++)
+                    {
+                        listOfSetups[i].ZeroLoad += listOfSetups[i].Load;
+                    }
+                }
                 for (int i = 0; i < listOfSetups.Count; i++)
                 {
-                    if (listOfSetups[i].FirstPick)
-                    {
-                        listOfSetups[i].ZeroLoad = listOfSetups[i].Load;
-                        listOfSetups[i].FirstPick = false;
-                    }
+                    listOfSetups[i].ZeroLoad = listOfSetups[i].ZeroLoad / 100;
                 }
                 while (!abort)
                 {
@@ -384,14 +380,21 @@ namespace WindowsFormsApp1
                     for (int i = 0; i < listOfSetups.Count; i++)
                     {
                     // request position
-                        var diff = (int)Math.Round(listOfSetups[i].TargetLoad - listOfSetups[i].Load+ listOfSetups[i].ZeroLoad);
-                        listOfSetups[i].LastLoad = (int)listOfSetups[i].Load;
-                        listOfSetups[i].Torque += (int)diff;
+                        double diff = (int)Math.Round(listOfSetups[i].TargetLoad + listOfSetups[i].Load - listOfSetups[i].ZeroLoad);
+                        listOfSetups[i].LastDiff += (int)diff;
                         /*using (var sw = System.IO.File.AppendText("c:\\tmp\\runlog.csv"))
                         {
                             sw.WriteLine(log);
                         }*/
-                        listOfSetups[i].Torque += diff / 10;
+                        if (listOfSetups[i].LastDiff > 5000)
+                        {
+                            listOfSetups[i].LastDiff = 5000;
+                        }
+                        if (listOfSetups[i].LastDiff < -5000)
+                        {
+                            listOfSetups[i].LastDiff = -5000;
+                        }
+                        listOfSetups[i].Torque = (int)Math.Round(listOfSetups[i].LastDiff * listOfSetups[i].Koeff);
                         if (listOfSetups[i].Torque > listOfSetups[i].TorqueLimit)
                         {
                             listOfSetups[i].Torque = listOfSetups[i].TorqueLimit;
@@ -402,17 +405,16 @@ namespace WindowsFormsApp1
                         }
                         if (listOfSetups[i].Torque > 0)   // go back
                         {
-                            listOfSetups[i].Direction = 'F';
+                            listOfSetups[i].Direction = 'B';
                         }
                         else if (listOfSetups[i].Torque < 0) // go forward
                         {
-                            listOfSetups[i].Direction = 'B';
+                            listOfSetups[i].Direction = 'F';
                         }
                         else
                         {
                             listOfSetups[i].Direction = 'F';
                         }
-                        listOfSetups[i].Torque = Math.Abs(listOfSetups[i].Torque);
                     }
                 }
                 System.Diagnostics.Trace.WriteLine("MotionCalculator stopped");
@@ -443,9 +445,11 @@ namespace WindowsFormsApp1
                     listofPorts.Add(serialPort);
                     listofPorts[0].BaudRate = 115200;
                     listofPorts[0].PortName = "COM" + MotorsCPort[0];
-                    listofPorts[0].WriteTimeout = 100;
+                    listofPorts[0].WriteTimeout = 1000;
                     listofPorts[0].DtrEnable = true;
                     listofPorts[0].Open();
+                    listofPorts[0].Write("{M0,F,0}{M1,F,0}{M2,F,0}{M3,F,0}{M4,F,0}{M5,F,0}{M6,F,0}{M7,F,0}");
+
                     listofPorts[0].ReadExisting();
 //                }
 //            }
@@ -532,8 +536,9 @@ namespace WindowsFormsApp1
             {
                 string tmp = ("{M" + i + ",F,0}");
                 listofPorts[0].Write(tmp);
+                listofPorts[0].ReadExisting();
             }
-
+            Thread.Sleep(100);
             for (int i = 0; i < listofPorts.Count; i++)
             {
                 listofPorts[i].Close();
@@ -550,20 +555,27 @@ namespace WindowsFormsApp1
 
             StartButton.Enabled = false;
             StopButton.Enabled = true;
+            var sw = System.IO.File.AppendText("c:\\tmp\\runlog.csv");
+
             while (!abort)
             {
                 for (int i = 0; i < phidgetReciver.Count(); i++)
                 {
-                    listOfLEdits[i].Text = phidgetReciver.getValueOf(i).ToString("#.##");
+                    listOfLEdits[i].Text = (motionCalculator.getSetupAt(i).ZeroLoad -phidgetReciver.getValueOf(i)).ToString("#.##");
                     listOfPEdits[i].Text = arduinoReciver.getValueOf(i).ToString("#.##");
                     listOfTEdits[i].Text = motionCalculator.getSetupAt(i).Direction + motionCalculator.getSetupAt(i).Torque.ToString("#.##");
+                    totalDiff11.Text = motionCalculator.getSetupAt(10).LastDiff.ToString("#.##");
+                    totalDiff12.Text = motionCalculator.getSetupAt(11).LastDiff.ToString("#.##");
                     motionCalculator.getSetupAt(i).Load = phidgetReciver.getValueOf(i);
                     motionCalculator.getSetupAt(i).Position = arduinoReciver.getValueOf(i);
                     arduinoSender.setValueOf(i, motionCalculator.getSetupAt(i).Torque, motionCalculator.getSetupAt(i).Direction);
                 }
-                Thread.Sleep(10);
+                sw.WriteLine(motionCalculator.getSetupAt(10).LastDiff + "," + phidgetReciver.getValueOf(10).ToString() + "," + motionCalculator.getSetupAt(10).Direction + motionCalculator.getSetupAt(10).Torque.ToString("#.##"));
+                //Thread.Sleep(10);
                 Application.DoEvents();
             }
+            sw.Close();
+
         }
         
         private void StopButton_Click(object sender, EventArgs e)
@@ -583,6 +595,11 @@ namespace WindowsFormsApp1
 
             StartButton.Enabled = true;
             StopButton.Enabled = false;
+        }
+
+        private void STOPButt_Click(object sender, EventArgs e)
+        {
+            System.Windows.Forms.Application.Exit();
         }
     }
     public class TestSetup

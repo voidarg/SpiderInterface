@@ -29,8 +29,10 @@
         private void InitializeComponent()
         {
             this.groupBox2 = new System.Windows.Forms.GroupBox();
+            this.totalDiff12 = new System.Windows.Forms.TextBox();
             this.currTorque12 = new System.Windows.Forms.TextBox();
             this.currPos12 = new System.Windows.Forms.TextBox();
+            this.totalDiff11 = new System.Windows.Forms.TextBox();
             this.currentLoad12 = new System.Windows.Forms.TextBox();
             this.currTorque11 = new System.Windows.Forms.TextBox();
             this.currPos11 = new System.Windows.Forms.TextBox();
@@ -84,13 +86,17 @@
             this.label8 = new System.Windows.Forms.Label();
             this.StartButton = new System.Windows.Forms.Button();
             this.StopButton = new System.Windows.Forms.Button();
+            this.STOPButt = new System.Windows.Forms.Button();
             this.groupBox2.SuspendLayout();
             this.SuspendLayout();
             // 
             // groupBox2
             // 
+            this.groupBox2.Controls.Add(this.STOPButt);
+            this.groupBox2.Controls.Add(this.totalDiff12);
             this.groupBox2.Controls.Add(this.currTorque12);
             this.groupBox2.Controls.Add(this.currPos12);
+            this.groupBox2.Controls.Add(this.totalDiff11);
             this.groupBox2.Controls.Add(this.currentLoad12);
             this.groupBox2.Controls.Add(this.currTorque11);
             this.groupBox2.Controls.Add(this.currPos11);
@@ -144,63 +150,81 @@
             this.groupBox2.Controls.Add(this.label8);
             this.groupBox2.Location = new System.Drawing.Point(12, 12);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(794, 589);
+            this.groupBox2.Size = new System.Drawing.Size(1112, 715);
             this.groupBox2.TabIndex = 16;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Sensor Mapping";
             // 
+            // totalDiff12
+            // 
+            this.totalDiff12.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.totalDiff12.Location = new System.Drawing.Point(794, 607);
+            this.totalDiff12.Name = "totalDiff12";
+            this.totalDiff12.ReadOnly = true;
+            this.totalDiff12.Size = new System.Drawing.Size(199, 83);
+            this.totalDiff12.TabIndex = 28;
+            // 
             // currTorque12
             // 
-            this.currTorque12.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.currTorque12.Location = new System.Drawing.Point(317, 537);
+            this.currTorque12.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.currTorque12.Location = new System.Drawing.Point(589, 607);
             this.currTorque12.Name = "currTorque12";
             this.currTorque12.ReadOnly = true;
-            this.currTorque12.Size = new System.Drawing.Size(111, 38);
+            this.currTorque12.Size = new System.Drawing.Size(199, 83);
             this.currTorque12.TabIndex = 28;
             // 
             // currPos12
             // 
-            this.currPos12.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.currPos12.Location = new System.Drawing.Point(200, 537);
+            this.currPos12.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.currPos12.Location = new System.Drawing.Point(472, 607);
             this.currPos12.Name = "currPos12";
             this.currPos12.ReadOnly = true;
-            this.currPos12.Size = new System.Drawing.Size(111, 38);
+            this.currPos12.Size = new System.Drawing.Size(111, 83);
             this.currPos12.TabIndex = 28;
+            // 
+            // totalDiff11
+            // 
+            this.totalDiff11.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.totalDiff11.Location = new System.Drawing.Point(794, 500);
+            this.totalDiff11.Name = "totalDiff11";
+            this.totalDiff11.ReadOnly = true;
+            this.totalDiff11.Size = new System.Drawing.Size(199, 83);
+            this.totalDiff11.TabIndex = 28;
             // 
             // currentLoad12
             // 
-            this.currentLoad12.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.currentLoad12.Location = new System.Drawing.Point(108, 537);
+            this.currentLoad12.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.currentLoad12.Location = new System.Drawing.Point(247, 607);
             this.currentLoad12.Name = "currentLoad12";
             this.currentLoad12.ReadOnly = true;
-            this.currentLoad12.Size = new System.Drawing.Size(86, 38);
+            this.currentLoad12.Size = new System.Drawing.Size(219, 83);
             this.currentLoad12.TabIndex = 28;
             // 
             // currTorque11
             // 
-            this.currTorque11.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.currTorque11.Location = new System.Drawing.Point(317, 493);
+            this.currTorque11.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.currTorque11.Location = new System.Drawing.Point(589, 500);
             this.currTorque11.Name = "currTorque11";
             this.currTorque11.ReadOnly = true;
-            this.currTorque11.Size = new System.Drawing.Size(111, 38);
+            this.currTorque11.Size = new System.Drawing.Size(199, 83);
             this.currTorque11.TabIndex = 28;
             // 
             // currPos11
             // 
-            this.currPos11.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.currPos11.Location = new System.Drawing.Point(200, 493);
+            this.currPos11.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.currPos11.Location = new System.Drawing.Point(472, 500);
             this.currPos11.Name = "currPos11";
             this.currPos11.ReadOnly = true;
-            this.currPos11.Size = new System.Drawing.Size(111, 38);
+            this.currPos11.Size = new System.Drawing.Size(111, 83);
             this.currPos11.TabIndex = 28;
             // 
             // currentLoad11
             // 
-            this.currentLoad11.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.currentLoad11.Location = new System.Drawing.Point(108, 493);
+            this.currentLoad11.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.currentLoad11.Location = new System.Drawing.Point(247, 500);
             this.currentLoad11.Name = "currentLoad11";
             this.currentLoad11.ReadOnly = true;
-            this.currentLoad11.Size = new System.Drawing.Size(86, 38);
+            this.currentLoad11.Size = new System.Drawing.Size(219, 83);
             this.currentLoad11.TabIndex = 28;
             // 
             // currTorque10
@@ -596,10 +620,10 @@
             // label13
             // 
             this.label13.AutoSize = true;
-            this.label13.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label13.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.label13.Location = new System.Drawing.Point(6, 500);
             this.label13.Name = "label13";
-            this.label13.Size = new System.Drawing.Size(96, 31);
+            this.label13.Size = new System.Drawing.Size(233, 76);
             this.label13.TabIndex = 27;
             this.label13.Text = "RLegF";
             // 
@@ -616,10 +640,10 @@
             // label12
             // 
             this.label12.AutoSize = true;
-            this.label12.Font = new System.Drawing.Font("Microsoft Sans Serif", 20F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.label12.Location = new System.Drawing.Point(5, 544);
+            this.label12.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.label12.Location = new System.Drawing.Point(5, 607);
             this.label12.Name = "label12";
-            this.label12.Size = new System.Drawing.Size(97, 31);
+            this.label12.Size = new System.Drawing.Size(237, 76);
             this.label12.TabIndex = 27;
             this.label12.Text = "RLegB";
             // 
@@ -645,7 +669,7 @@
             // 
             // StartButton
             // 
-            this.StartButton.Location = new System.Drawing.Point(12, 607);
+            this.StartButton.Location = new System.Drawing.Point(12, 733);
             this.StartButton.Name = "StartButton";
             this.StartButton.Size = new System.Drawing.Size(386, 52);
             this.StartButton.TabIndex = 17;
@@ -656,7 +680,7 @@
             // StopButton
             // 
             this.StopButton.Enabled = false;
-            this.StopButton.Location = new System.Drawing.Point(404, 607);
+            this.StopButton.Location = new System.Drawing.Point(404, 733);
             this.StopButton.Name = "StopButton";
             this.StopButton.Size = new System.Drawing.Size(402, 52);
             this.StopButton.TabIndex = 18;
@@ -664,11 +688,22 @@
             this.StopButton.UseVisualStyleBackColor = true;
             this.StopButton.Click += new System.EventHandler(this.StopButton_Click);
             // 
+            // STOPButt
+            // 
+            this.STOPButt.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.STOPButt.Location = new System.Drawing.Point(603, 53);
+            this.STOPButt.Name = "STOPButt";
+            this.STOPButt.Size = new System.Drawing.Size(390, 434);
+            this.STOPButt.TabIndex = 29;
+            this.STOPButt.Text = "Stop and Close";
+            this.STOPButt.UseVisualStyleBackColor = true;
+            this.STOPButt.Click += new System.EventHandler(this.STOPButt_Click);
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(812, 669);
+            this.ClientSize = new System.Drawing.Size(1148, 797);
             this.Controls.Add(this.StopButton);
             this.Controls.Add(this.StartButton);
             this.Controls.Add(this.groupBox2);
@@ -740,6 +775,9 @@
         private System.Windows.Forms.TextBox currTorque2;
         private System.Windows.Forms.TextBox currTorque1;
         private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.TextBox totalDiff12;
+        private System.Windows.Forms.TextBox totalDiff11;
+        private System.Windows.Forms.Button STOPButt;
     }
 }
 
