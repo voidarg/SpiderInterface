@@ -11,6 +11,9 @@ using Phidget22.Events;
 using System.IO.Ports;
 using System.Threading;
 using System.Diagnostics;
+using System.Net.Sockets;
+using System.Net;
+
 namespace WindowsFormsApp1
 {
     public partial class Form1 : Form
@@ -18,20 +21,25 @@ namespace WindowsFormsApp1
         int lastPort = 0;
         bool abort = false;
         Dictionary<int, int> MotorsCPort = new Dictionary<int, int>();
+        Dictionary<int, int> MtrToPh = new Dictionary<int, int>();
+        Dictionary<int, int> PhToMtr = new Dictionary<int, int>();
         List<TextBox> listOfLEdits = new List<TextBox>();
         List<TextBox> listOfPEdits = new List<TextBox>();
         List<TextBox> listOfTEdits = new List<TextBox>();
+        List<TextBox> listOfSEdits = new List<TextBox>();
         List<SerialPort> listofPorts = new List<SerialPort>();
 
         Thread PhidgetTread;
         Thread ReciverTread;
         Thread SenderTread;
         Thread CalculatorTread;
+        Thread UDPReceiverTread;
 
         PhidgetReciver phidgetReciver = new PhidgetReciver();
         MotionCalculator motionCalculator = new MotionCalculator();
         ArduinoReciver arduinoReciver;
         ArduinoSender arduinoSender;
+        UdpReceiver udpReceiver;
 
         public class PhidgetReciver
         {
@@ -75,7 +83,7 @@ namespace WindowsFormsApp1
                 System.Diagnostics.Trace.WriteLine("PhidgetReciver started");
                 while (!abort)
                 {
-                    System.Diagnostics.Trace.WriteLine("PhidgetReciver is ok");
+                    //System.Diagnostics.Trace.WriteLine("PhidgetReciver is ok");
                     Thread.Sleep(1000);
                 }
                 phidgetManager.Close();
@@ -168,18 +176,22 @@ namespace WindowsFormsApp1
         }
         public class ArduinoReciver
         {
-            Dictionary<int, int> AxisPosition = new Dictionary<int, int>();
+            Dictionary<int, double> AxisPosition = new Dictionary<int, double>();
+            Dictionary<int, double> AxisPositionSum = new Dictionary<int, double>();
+            Dictionary<int, Queue<double>> AxisPositionQueue = new Dictionary<int, Queue<double>>();
+            Dictionary<int, int> MtrToPh;
             List<SerialPort> m_listofPorts;
-            public ArduinoReciver(ref List<SerialPort> _listofPorts)
+            public ArduinoReciver(ref List<SerialPort> _listofPorts, ref Dictionary<int, int> _MtrToPh)
             {
                 m_listofPorts = _listofPorts;
+                MtrToPh = _MtrToPh;
             }
 
             public bool abort { get; set; }
 
             public int getValueOf(int index)
             {
-                return AxisPosition[index];
+                return (int)AxisPosition[index];
             }
             public int Count()
             {
@@ -205,6 +217,9 @@ namespace WindowsFormsApp1
                 for (int i = 0; i < 12; i++)
                 {
                     AxisPosition.Add(i, 1);
+                    AxisPositionSum.Add(i, 0);
+                    Queue<double> PositionPipe = new Queue<double>();
+                    AxisPositionQueue.Add(i, PositionPipe);
                 }
                 return true;
             }
@@ -228,7 +243,9 @@ namespace WindowsFormsApp1
             private void SerialPort_DataReceived(object sender, SerialDataReceivedEventArgs e)
             {
                 SerialPort sp = sender as SerialPort;
-
+                int i = 0;
+                while (m_listofPorts[i++].PortName != sp.PortName) ;
+                int motorShift = (i-1) * 6;
                 if (sp.IsOpen)
                 {
                     var data = sp.ReadExisting();
@@ -238,7 +255,35 @@ namespace WindowsFormsApp1
                         string[] tmp = m.ToString().Split(new string[] { ",P" }, StringSplitOptions.None);
                         //System.Diagnostics.Trace.WriteLine(int.Parse(tmp[0].Remove(0, 2)) + " " + int.Parse(tmp[1].TrimEnd('}')));
                         //System.Diagnostics.Trace.WriteLine(int.Parse(tmp[0].Remove(0, 2)).ToString());
-                        AxisPosition[int.Parse(tmp[0].Remove(0, 2))] = int.Parse(tmp[1].TrimEnd('}'));
+                        int motorTrimmed = int.Parse(tmp[0].Remove(0, 2));
+                        int posTrimmed = int.Parse(tmp[1].TrimEnd('}'));
+                        int phidgetId = MtrToPh[motorTrimmed + motorShift];
+                        if (phidgetId == 11)
+                        {
+                           System.Diagnostics.Trace.WriteLine(/*m.ToString() + " " + " " + */AxisPositionSum[phidgetId] +"," + posTrimmed + "," + AxisPosition[phidgetId]);
+                           // System.Diagnostics.Trace.WriteLine(m.ToString() + " " + sp.PortName + " " + (motorTrimmed + motorShift) + " " + motorTrimmed + " " + posTrimmed);
+                        }
+                        
+                        if (AxisPositionQueue[phidgetId].Count < 10)
+                        {
+                            AxisPositionQueue[phidgetId].Enqueue(posTrimmed);
+                            AxisPositionSum[phidgetId] += posTrimmed;
+                        }else
+                        {
+                            if (Math.Abs(posTrimmed*10 - AxisPositionSum[phidgetId]) > 100)
+                            {
+                                AxisPositionQueue[phidgetId].Enqueue(AxisPositionSum[phidgetId]/10);
+                                AxisPositionSum[phidgetId] += (AxisPositionSum[phidgetId] / 10);
+                            }
+                            else
+                            {
+                                AxisPositionQueue[phidgetId].Enqueue(posTrimmed);
+                                AxisPositionSum[phidgetId] += posTrimmed;
+                            }
+                            AxisPositionSum[phidgetId] -= AxisPositionQueue[phidgetId].Dequeue();
+                        }
+                       AxisPosition[phidgetId] = AxisPositionSum[phidgetId] / 10;
+                        //System.Diagnostics.Trace.WriteLine( m.ToString() + " " + sp.PortName + " " + (motorTrimmed + motorShift) + " " + motorTrimmed+ " " + posTrimmed);
                     }
                 }
             }
@@ -248,10 +293,12 @@ namespace WindowsFormsApp1
         {
             Dictionary<int, TorqueAndDir> AxisTorque = new Dictionary<int, TorqueAndDir>();
             Dictionary<int, char> AxisDir = new Dictionary<int, char>();
+            Dictionary<int, int> PhToMtr;
             List<SerialPort> m_listofPorts;
-            public ArduinoSender(ref List<SerialPort> _listofPorts)
+            public ArduinoSender(ref List<SerialPort> _listofPorts, ref Dictionary<int, int> _PhToMtr)
             {
                 m_listofPorts = _listofPorts;
+                PhToMtr = _PhToMtr;
             }
 
             public bool abort { get; set; }
@@ -295,10 +342,36 @@ namespace WindowsFormsApp1
                 {
                     Thread.Sleep(1);
                     //System.Diagnostics.Trace.WriteLine("ArduinoSender is ok:"+ AxisTorque.Count.ToString());
-                    for (int i = 10; i < AxisTorque.Count; i++)
+                    for (int i = 0; i < AxisTorque.Count; i++)
                     {
-                        string tmp = ("{M" + (i-10)+ "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
-                        m_listofPorts[0].Write(tmp);
+                        int SerialSelect = PhToMtr[i] / 6;
+                        //string tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                            string tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + ",0}");
+                        //if (i == 11)
+                        //{
+                        //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                        //}
+                        //1if (i == 5)
+                        //1{
+                        //1    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                        //1}
+                        //if (i == 9)
+                        //{
+                        //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                        //}
+                        //if (i == 2)
+                        //{
+                        //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                        //}
+                        //if (i == 0)
+                        //{
+                        //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                        //}
+                        //if (i == 1)
+                        //{
+                        //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                        //}
+                        m_listofPorts[SerialSelect].Write(tmp);
                     }
                 }
                 System.Diagnostics.Trace.WriteLine("ArduinoSender stopped");
@@ -332,9 +405,11 @@ namespace WindowsFormsApp1
                 for (int i = 0; i < 12; i++)
                 {
                     if (AxisLimits == null) AxisLimits = new Dictionary<int, int[]>();
-                    int[] tmp = new int[2] { 0, 1000 };
+                    int[] tmp = new int[2] { 0, 5000 };
                     AxisLimits.Add(i, tmp);
                 }
+                AxisLimits[11][0] = 200;
+                AxisLimits[11][1] = 550;
                 for (int i = 0; i < AxisLimits.Count; i++)
                 {
                     TestSetup testSetup = new TestSetup();
@@ -350,15 +425,17 @@ namespace WindowsFormsApp1
                     testSetup.PositionRequestCommand = "{P" + testSetup.MotorId.ToString() + "}";
                     testSetup.MoveCommand = "M" + testSetup.MotorId.ToString() + ",{0},{1}";
                     testSetup.Torque = 0;
-                    testSetup.TorqueLimit = 75;
+                    testSetup.TorqueLimit = 100;
+                    testSetup.Koeff = 0.03;
                     testSetup.Direction = 'S';
-                    testSetup.Koeff = 0.01;
                     listOfSetups.Add(testSetup);
                 }
+
                 return true;
             }
             public void ThreadRun()
             {
+                
                 initializeCalculator();
                 System.Diagnostics.Trace.WriteLine("MotionCalculator started");
                 while (listOfSetups[0].Load == 0 || listOfSetups[listOfSetups.Count-1].Load == 0) ;
@@ -379,22 +456,32 @@ namespace WindowsFormsApp1
                     Thread.Sleep(10);
                     for (int i = 0; i < listOfSetups.Count; i++)
                     {
-                    // request position
-                        double diff = (int)Math.Round(listOfSetups[i].TargetLoad + listOfSetups[i].Load - listOfSetups[i].ZeroLoad);
-                        listOfSetups[i].LastDiff += (int)diff;
+                        // request position
+                        double diff = (listOfSetups[i].TargetLoad + listOfSetups[i].Load - listOfSetups[i].ZeroLoad);
+                        listOfSetups[i].LastDiff += Math.Pow(diff, 1);
                         /*using (var sw = System.IO.File.AppendText("c:\\tmp\\runlog.csv"))
                         {
                             sw.WriteLine(log);
                         }*/
-                        if (listOfSetups[i].LastDiff > 5000)
+                        double limitSum = (double)listOfSetups[i].TorqueLimit / listOfSetups[i].Koeff;
+                        if (listOfSetups[i].LastDiff > limitSum)
                         {
-                            listOfSetups[i].LastDiff = 5000;
+                            listOfSetups[i].LastDiff = limitSum;
                         }
-                        if (listOfSetups[i].LastDiff < -5000)
+                        if (listOfSetups[i].LastDiff < -limitSum)
                         {
-                            listOfSetups[i].LastDiff = -5000;
+                            listOfSetups[i].LastDiff = -limitSum;
                         }
-                        listOfSetups[i].Torque = (int)Math.Round(listOfSetups[i].LastDiff * listOfSetups[i].Koeff);
+                        if (listOfSetups[i].MinPos > listOfSetups[i].Position)
+                        {
+                            listOfSetups[i].Torque = -40;listOfSetups[i].LastDiff = 0;
+                        }
+                        else if (listOfSetups[i].MaxPos < listOfSetups[i].Position)
+                        {
+                            listOfSetups[i].Torque = 40; listOfSetups[i].LastDiff = 0;
+                        }
+                        else listOfSetups[i].Torque = (int)Math.Round(listOfSetups[i].LastDiff * listOfSetups[i].Koeff);
+
                         if (listOfSetups[i].Torque > listOfSetups[i].TorqueLimit)
                         {
                             listOfSetups[i].Torque = listOfSetups[i].TorqueLimit;
@@ -425,9 +512,31 @@ namespace WindowsFormsApp1
 
         public Form1()
         {
-            for (int i = 0; i < 12; i++)
+            for (int i = 0; i < 6; i++)
             {
-                MotorsCPort.Add(i,3);
+                MotorsCPort.Add(i,4);
+            }
+            for (int i = 6; i < 12; i++)
+            {
+                MotorsCPort.Add(i, 8);
+            }
+            {
+                MtrToPh.Add( 0,10);
+                MtrToPh.Add( 1,11);
+                MtrToPh.Add( 2,4);
+                MtrToPh.Add( 3,5);
+                MtrToPh.Add( 4,6);
+                MtrToPh.Add( 5,7);
+                MtrToPh.Add( 6,0);
+                MtrToPh.Add( 7,1);
+                MtrToPh.Add( 8,2);
+                MtrToPh.Add( 9,3);
+                MtrToPh.Add( 10,8);
+                MtrToPh.Add( 11,9);
+            }
+            for (int i = 0; i < MtrToPh.Count; i++)
+            {
+                PhToMtr.Add(MtrToPh[i],i);
             }
             InitializeComponent();
         }
@@ -436,35 +545,44 @@ namespace WindowsFormsApp1
 
         private void Form1_Load(object sender, EventArgs e)
         {
-//            for (int i = 0; i < MotorsCPort.Count; i++)
-//            {
-//                if (lastPort < MotorsCPort[i])
-//                {
-//                    lastPort = MotorsCPort[i];
-                    SerialPort serialPort = new SerialPort();
-                    listofPorts.Add(serialPort);
-                    listofPorts[0].BaudRate = 115200;
-                    listofPorts[0].PortName = "COM" + MotorsCPort[0];
-                    listofPorts[0].WriteTimeout = 1000;
-                    listofPorts[0].DtrEnable = true;
-                    listofPorts[0].Open();
-                    listofPorts[0].Write("{M0,F,0}{M1,F,0}{M2,F,0}{M3,F,0}{M4,F,0}{M5,F,0}{M6,F,0}{M7,F,0}");
 
-                    listofPorts[0].ReadExisting();
-//                }
-//            }
+            for (int i = 0; i < MotorsCPort.Count; i++)
+            {
+                if (lastPort < MotorsCPort[i])
+                {
+                    lastPort = MotorsCPort[i];
+                    SerialPort serialPort = new SerialPort();
+                    serialPort.BaudRate = 115200;
+                    serialPort.PortName = "COM" + MotorsCPort[i];
+                    serialPort.WriteTimeout = 1000;
+                    serialPort.DtrEnable = false;
+                    serialPort.RtsEnable = false;
+                    serialPort.Open();
+
+
+                    serialPort.Write("{M0,F,0}{M1,F,0}{M2,F,0}{M3,F,0}{M4,F,0}{M5,F,0}");
+                    serialPort.ReadExisting();
+                    listofPorts.Add(serialPort);
+                }
+            }
+            UdpClient udpClient = new UdpClient(8888);
+
+
             abort = false;
-            arduinoReciver = new ArduinoReciver(ref listofPorts);
-            arduinoSender = new ArduinoSender(ref listofPorts);
+            arduinoReciver = new ArduinoReciver(ref listofPorts,ref MtrToPh);
+            arduinoSender = new ArduinoSender(ref listofPorts, ref PhToMtr);
+            udpReceiver = new UdpReceiver(ref udpClient);
             PhidgetTread = new Thread(new ThreadStart(phidgetReciver.ThreadRun));
             ReciverTread = new Thread(new ThreadStart(arduinoReciver.ThreadRun));
             SenderTread = new Thread(new ThreadStart(arduinoSender.ThreadRun));
             CalculatorTread = new Thread(new ThreadStart(motionCalculator.ThreadRun));
+            UDPReceiverTread = new Thread(new ThreadStart(udpReceiver.ThreadRun));
             System.Diagnostics.Trace.WriteLine("Before start thread");
             PhidgetTread.Name = "PhidgetTread";
             ReciverTread.Name = "ReciverTread";
             SenderTread.Name = "SenderTread";
             CalculatorTread.Name = "CalculatorTread";
+            UDPReceiverTread.Name = "UDPReceiverTread";
 
             phidgetReciver.abort = false;
             arduinoReciver.abort = false;
@@ -474,6 +592,7 @@ namespace WindowsFormsApp1
             ReciverTread.Start();
             SenderTread.Start();
             CalculatorTread.Start();
+            UDPReceiverTread.Start();
             {
                 listOfLEdits.Add(currentLoad1);
                 listOfLEdits.Add(currentLoad2);
@@ -516,6 +635,20 @@ namespace WindowsFormsApp1
                 listOfTEdits.Add(currTorque11);
                 listOfTEdits.Add(currTorque12);
             }
+            {
+                listOfSEdits.Add(totalDiff1);
+                listOfSEdits.Add(totalDiff2);
+                listOfSEdits.Add(totalDiff3);
+                listOfSEdits.Add(totalDiff4);
+                listOfSEdits.Add(totalDiff5);
+                listOfSEdits.Add(totalDiff6);
+                listOfSEdits.Add(totalDiff7);
+                listOfSEdits.Add(totalDiff8);
+                listOfSEdits.Add(totalDiff9);
+                listOfSEdits.Add(totalDiff10);
+                listOfSEdits.Add(totalDiff11);
+                listOfSEdits.Add(totalDiff12);
+            }
 
         }
 
@@ -527,16 +660,21 @@ namespace WindowsFormsApp1
             arduinoReciver.abort = true;
             arduinoSender.abort = true;
             motionCalculator.abort = true;
+            udpReceiver.Stop();
             abort = true;
-            PhidgetTread.Join();
-            ReciverTread.Join();
-            SenderTread.Join();
-            CalculatorTread.Join();
-            for (int i = 0; i < 12; i++)
+            if(PhidgetTread.IsAlive)PhidgetTread.Join();
+            if(ReciverTread.IsAlive)ReciverTread.Join();
+            if(SenderTread.IsAlive)SenderTread.Join();
+            if (CalculatorTread.IsAlive) CalculatorTread.Join();
+            //if (UDPReceiverTread.IsAlive) UDPReceiverTread.Join();
+            for (int j = 0; j < listofPorts.Count; j++)
             {
-                string tmp = ("{M" + i + ",F,0}");
-                listofPorts[0].Write(tmp);
-                listofPorts[0].ReadExisting();
+                for (int i = 0; i < 6; i++)
+                {
+                    string tmp = ("{M" + i + ",F,0}");
+                    listofPorts[j].Write(tmp);
+                    listofPorts[j].ReadExisting();
+                }
             }
             Thread.Sleep(100);
             for (int i = 0; i < listofPorts.Count; i++)
@@ -552,7 +690,6 @@ namespace WindowsFormsApp1
             arduinoReciver.Start();
             arduinoSender.Start();
             motionCalculator.Start();
-
             StartButton.Enabled = false;
             StopButton.Enabled = true;
             var sw = System.IO.File.AppendText("c:\\tmp\\runlog.csv");
@@ -564,13 +701,12 @@ namespace WindowsFormsApp1
                     listOfLEdits[i].Text = (motionCalculator.getSetupAt(i).ZeroLoad -phidgetReciver.getValueOf(i)).ToString("#.##");
                     listOfPEdits[i].Text = arduinoReciver.getValueOf(i).ToString("#.##");
                     listOfTEdits[i].Text = motionCalculator.getSetupAt(i).Direction + motionCalculator.getSetupAt(i).Torque.ToString("#.##");
-                    totalDiff11.Text = motionCalculator.getSetupAt(10).LastDiff.ToString("#.##");
-                    totalDiff12.Text = motionCalculator.getSetupAt(11).LastDiff.ToString("#.##");
+                    listOfSEdits[i].Text = motionCalculator.getSetupAt(i).LastDiff.ToString("#.##");
                     motionCalculator.getSetupAt(i).Load = phidgetReciver.getValueOf(i);
                     motionCalculator.getSetupAt(i).Position = arduinoReciver.getValueOf(i);
                     arduinoSender.setValueOf(i, motionCalculator.getSetupAt(i).Torque, motionCalculator.getSetupAt(i).Direction);
                 }
-                sw.WriteLine(motionCalculator.getSetupAt(10).LastDiff + "," + phidgetReciver.getValueOf(10).ToString() + "," + motionCalculator.getSetupAt(10).Direction + motionCalculator.getSetupAt(10).Torque.ToString("#.##"));
+                sw.WriteLine(motionCalculator.getSetupAt(2).LastDiff + "," + phidgetReciver.getValueOf(2).ToString() + "," + motionCalculator.getSetupAt(2).Torque.ToString("#.##") + "," + arduinoReciver.getValueOf(2).ToString("#.##"));
                 //Thread.Sleep(10);
                 Application.DoEvents();
             }
@@ -617,7 +753,7 @@ namespace WindowsFormsApp1
         public double Load { get; set; }
         public double ZeroLoad { get; set; }
         public int Position { get; set; }
-        public int LastDiff { get; set; }
+        public double LastDiff { get; set; }
         public char Direction { get; set; }
         public string PositionRequestCommand { get; set; }
         public string MoveCommand { get; set; }
