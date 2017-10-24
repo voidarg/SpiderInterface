@@ -98,8 +98,8 @@ namespace WindowsFormsApp1
 
 
             abort = false;
-            arduinoReciver = new ArduinoReciver(ref listofPorts,ref MtrToPh);
             arduinoSender = new ArduinoSender(ref listofPorts, ref PhToMtr);
+            arduinoReciver = new ArduinoReciver(ref listofPorts,ref MtrToPh);
             udpReceiver = new UdpReceiver(ref udpClient);
             PhidgetTread = new Thread(new ThreadStart(phidgetReciver.ThreadRun));
             ReciverTread = new Thread(new ThreadStart(arduinoReciver.ThreadRun));
@@ -221,13 +221,13 @@ namespace WindowsFormsApp1
             motionCalculator.Start();
             StartButton.Enabled = false;
             StopButton.Enabled = true;
-            var sw = System.IO.File.AppendText("c:\\tmp\\runlog.csv");
+            //var sw = System.IO.File.AppendText("c:\\tmp\\runlog.csv");
 
             while (!abort)
             {
                 for (int i = 0; i < phidgetReciver.Count(); i++)
                 {
-                    listOfLEdits[i].Text = (motionCalculator.getSetupAt(i).ZeroLoad -phidgetReciver.getValueOf(i)).ToString("#.##");
+                    listOfLEdits[i].Text = (motionCalculator.getSetupAt(i).Load - motionCalculator.getSetupAt(i).ZeroLoad).ToString("#.##");
                     listOfPEdits[i].Text = arduinoReciver.getValueOf(i).ToString("#.##");
                     listOfTEdits[i].Text = motionCalculator.getSetupAt(i).Direction + motionCalculator.getSetupAt(i).Torque.ToString("#.##");
                     listOfSEdits[i].Text = motionCalculator.getSetupAt(i).LastDiff.ToString("#.##");
@@ -235,11 +235,11 @@ namespace WindowsFormsApp1
                     motionCalculator.getSetupAt(i).Position = arduinoReciver.getValueOf(i);
                     arduinoSender.setValueOf(i, motionCalculator.getSetupAt(i).Torque, motionCalculator.getSetupAt(i).Direction);
                 }
-                //sw.WriteLine(motionCalculator.getSetupAt(2).LastDiff + "," + phidgetReciver.getValueOf(2).ToString() + "," + motionCalculator.getSetupAt(2).Torque.ToString("#.##") + "," + arduinoReciver.getValueOf(2).ToString("#.##"));
+                //sw.WriteLine(motionCalculator.getSetupAt(4).LastDiff + "," + phidgetReciver.getValueOf(4).ToString() + "," + motionCalculator.getSetupAt(4).Torque.ToString("#.##")+","+ motionCalculator.getSetupAt(5).LastDiff + "," + phidgetReciver.getValueOf(5).ToString() + "," + motionCalculator.getSetupAt(5).Torque.ToString("#.##"));
                 //Thread.Sleep(10);
                 Application.DoEvents();
             }
-            sw.Close();
+            //sw.Close();
 
         }
         

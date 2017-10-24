@@ -79,6 +79,7 @@ namespace WindowsFormsApp1
         {
             SerialPort sp = sender as SerialPort;
             int i = 0;
+            //if (m_listofPorts[2].PortName == sp.PortName) return;
             while (m_listofPorts[i++].PortName != sp.PortName) ;
             int motorShift = (i - 1) * 6;
             if (sp.IsOpen)
@@ -99,26 +100,26 @@ namespace WindowsFormsApp1
                     //    // System.Diagnostics.Trace.WriteLine(m.ToString() + " " + sp.PortName + " " + (motorTrimmed + motorShift) + " " + motorTrimmed + " " + posTrimmed);
                     //}
 
-                    if (AxisPositionQueue[phidgetId].Count < 10)
-                    {
-                        AxisPositionQueue[phidgetId].Enqueue(posTrimmed);
-                        AxisPositionSum[phidgetId] += posTrimmed;
-                    }
-                    else
-                    {
-                        if (Math.Abs(posTrimmed * 10 - AxisPositionSum[phidgetId]) > 30)
-                        {
-                            AxisPositionQueue[phidgetId].Enqueue(AxisPositionSum[phidgetId] / 10);
-                            AxisPositionSum[phidgetId] += (AxisPositionSum[phidgetId] / 10);
-                        }
-                        else
-                        {
-                            AxisPositionQueue[phidgetId].Enqueue(posTrimmed);
-                            AxisPositionSum[phidgetId] += posTrimmed;
-                        }
-                        AxisPositionSum[phidgetId] -= AxisPositionQueue[phidgetId].Dequeue();
-                    }
-                    AxisPosition[phidgetId] = AxisPositionSum[phidgetId] / 10;
+                    //if (AxisPositionQueue[phidgetId].Count < 10)
+                    //{
+                    //    AxisPositionQueue[phidgetId].Enqueue(posTrimmed);
+                    //    AxisPositionSum[phidgetId] += posTrimmed;
+                    //}
+                    //else
+                    //{
+                    //    if (Math.Abs(posTrimmed * 10 - AxisPositionSum[phidgetId]) > 10000)
+                    //    {
+                    //        AxisPositionQueue[phidgetId].Enqueue(AxisPositionSum[phidgetId] / 10);
+                    //        AxisPositionSum[phidgetId] += (AxisPositionSum[phidgetId] / 10);
+                    //    }
+                    //    else
+                    //    {
+                    //        AxisPositionQueue[phidgetId].Enqueue(posTrimmed);
+                    //        AxisPositionSum[phidgetId] += posTrimmed;
+                    //    }
+                    //    AxisPositionSum[phidgetId] -= AxisPositionQueue[phidgetId].Dequeue();
+                    //}
+                    AxisPosition[phidgetId] = posTrimmed;// AxisPositionSum[phidgetId] / 10;
                     //System.Diagnostics.Trace.WriteLine( m.ToString() + " " + sp.PortName + " " + (motorTrimmed + motorShift) + " " + motorTrimmed+ " " + posTrimmed);
                 }
             }

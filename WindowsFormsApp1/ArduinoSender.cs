@@ -74,14 +74,14 @@ namespace WindowsFormsApp1
                     //{
                     //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
                     //}
-                    //if (i == 4)
-                    //{
-                    //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
-                    //}
-                    //if (i == 5)
-                    //{
-                    //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
-                    //}
+                    if (i == 4)
+                    {
+                        tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                    }
+                    if (i == 5)
+                    {
+                        tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                    }
                     //if (i == 3)
                     //{
                     //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
