@@ -101,6 +101,8 @@
             this.StartButton = new System.Windows.Forms.Button();
             this.StopButton = new System.Windows.Forms.Button();
             this.bindingSource1 = new System.Windows.Forms.BindingSource(this.components);
+            this.textK1 = new System.Windows.Forms.TextBox();
+            this.textK2 = new System.Windows.Forms.TextBox();
             this.groupBox2.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.bindingSource1)).BeginInit();
             this.SuspendLayout();
@@ -153,6 +155,8 @@
             this.groupBox2.Controls.Add(this.currTorque2);
             this.groupBox2.Controls.Add(this.currPos2);
             this.groupBox2.Controls.Add(this.currentLoad3);
+            this.groupBox2.Controls.Add(this.textK2);
+            this.groupBox2.Controls.Add(this.textK1);
             this.groupBox2.Controls.Add(this.totalDiff1);
             this.groupBox2.Controls.Add(this.currTorque1);
             this.groupBox2.Controls.Add(this.currPos1);
@@ -224,10 +228,10 @@
             // currTorque12
             // 
             this.currTorque12.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.currTorque12.Location = new System.Drawing.Point(589, 880);
+            this.currTorque12.Location = new System.Drawing.Point(615, 880);
             this.currTorque12.Name = "currTorque12";
             this.currTorque12.ReadOnly = true;
-            this.currTorque12.Size = new System.Drawing.Size(199, 83);
+            this.currTorque12.Size = new System.Drawing.Size(173, 83);
             this.currTorque12.TabIndex = 28;
             // 
             // currPos12
@@ -236,7 +240,7 @@
             this.currPos12.Location = new System.Drawing.Point(472, 880);
             this.currPos12.Name = "currPos12";
             this.currPos12.ReadOnly = true;
-            this.currPos12.Size = new System.Drawing.Size(111, 83);
+            this.currPos12.Size = new System.Drawing.Size(137, 83);
             this.currPos12.TabIndex = 28;
             // 
             // totalDiff5
@@ -278,10 +282,10 @@
             // currTorque11
             // 
             this.currTorque11.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.currTorque11.Location = new System.Drawing.Point(589, 773);
+            this.currTorque11.Location = new System.Drawing.Point(615, 773);
             this.currTorque11.Name = "currTorque11";
             this.currTorque11.ReadOnly = true;
-            this.currTorque11.Size = new System.Drawing.Size(199, 83);
+            this.currTorque11.Size = new System.Drawing.Size(173, 83);
             this.currTorque11.TabIndex = 28;
             // 
             // currPos11
@@ -290,7 +294,7 @@
             this.currPos11.Location = new System.Drawing.Point(472, 773);
             this.currPos11.Name = "currPos11";
             this.currPos11.ReadOnly = true;
-            this.currPos11.Size = new System.Drawing.Size(111, 83);
+            this.currPos11.Size = new System.Drawing.Size(137, 83);
             this.currPos11.TabIndex = 28;
             // 
             // currentLoad11
@@ -449,10 +453,10 @@
             // currTorque6
             // 
             this.currTorque6.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.currTorque6.Location = new System.Drawing.Point(589, 507);
+            this.currTorque6.Location = new System.Drawing.Point(615, 507);
             this.currTorque6.Name = "currTorque6";
             this.currTorque6.ReadOnly = true;
-            this.currTorque6.Size = new System.Drawing.Size(199, 83);
+            this.currTorque6.Size = new System.Drawing.Size(173, 83);
             this.currTorque6.TabIndex = 28;
             // 
             // currPos6
@@ -461,7 +465,7 @@
             this.currPos6.Location = new System.Drawing.Point(472, 507);
             this.currPos6.Name = "currPos6";
             this.currPos6.ReadOnly = true;
-            this.currPos6.Size = new System.Drawing.Size(111, 83);
+            this.currPos6.Size = new System.Drawing.Size(137, 83);
             this.currPos6.TabIndex = 28;
             // 
             // currentLoad6
@@ -476,10 +480,10 @@
             // currTorque5
             // 
             this.currTorque5.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.currTorque5.Location = new System.Drawing.Point(589, 400);
+            this.currTorque5.Location = new System.Drawing.Point(615, 400);
             this.currTorque5.Name = "currTorque5";
             this.currTorque5.ReadOnly = true;
-            this.currTorque5.Size = new System.Drawing.Size(199, 83);
+            this.currTorque5.Size = new System.Drawing.Size(173, 83);
             this.currTorque5.TabIndex = 28;
             // 
             // currPos5
@@ -488,7 +492,7 @@
             this.currPos5.Location = new System.Drawing.Point(472, 400);
             this.currPos5.Name = "currPos5";
             this.currPos5.ReadOnly = true;
-            this.currPos5.Size = new System.Drawing.Size(111, 83);
+            this.currPos5.Size = new System.Drawing.Size(137, 83);
             this.currPos5.TabIndex = 28;
             // 
             // totalDiff4
@@ -539,10 +543,10 @@
             // currTorque3
             // 
             this.currTorque3.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.currTorque3.Location = new System.Drawing.Point(589, 236);
+            this.currTorque3.Location = new System.Drawing.Point(615, 236);
             this.currTorque3.Name = "currTorque3";
             this.currTorque3.ReadOnly = true;
-            this.currTorque3.Size = new System.Drawing.Size(199, 83);
+            this.currTorque3.Size = new System.Drawing.Size(173, 83);
             this.currTorque3.TabIndex = 28;
             // 
             // currPos3
@@ -551,7 +555,7 @@
             this.currPos3.Location = new System.Drawing.Point(472, 236);
             this.currPos3.Name = "currPos3";
             this.currPos3.ReadOnly = true;
-            this.currPos3.Size = new System.Drawing.Size(111, 83);
+            this.currPos3.Size = new System.Drawing.Size(137, 83);
             this.currPos3.TabIndex = 28;
             // 
             // currentLoad4
@@ -575,10 +579,10 @@
             // currTorque2
             // 
             this.currTorque2.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.currTorque2.Location = new System.Drawing.Point(589, 147);
+            this.currTorque2.Location = new System.Drawing.Point(615, 147);
             this.currTorque2.Name = "currTorque2";
             this.currTorque2.ReadOnly = true;
-            this.currTorque2.Size = new System.Drawing.Size(199, 83);
+            this.currTorque2.Size = new System.Drawing.Size(173, 83);
             this.currTorque2.TabIndex = 28;
             // 
             // currPos2
@@ -587,7 +591,7 @@
             this.currPos2.Location = new System.Drawing.Point(472, 147);
             this.currPos2.Name = "currPos2";
             this.currPos2.ReadOnly = true;
-            this.currPos2.Size = new System.Drawing.Size(111, 83);
+            this.currPos2.Size = new System.Drawing.Size(137, 83);
             this.currPos2.TabIndex = 28;
             // 
             // currentLoad3
@@ -611,10 +615,10 @@
             // currTorque1
             // 
             this.currTorque1.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.currTorque1.Location = new System.Drawing.Point(589, 55);
+            this.currTorque1.Location = new System.Drawing.Point(615, 55);
             this.currTorque1.Name = "currTorque1";
             this.currTorque1.ReadOnly = true;
-            this.currTorque1.Size = new System.Drawing.Size(199, 83);
+            this.currTorque1.Size = new System.Drawing.Size(173, 83);
             this.currTorque1.TabIndex = 28;
             // 
             // currPos1
@@ -623,7 +627,7 @@
             this.currPos1.Location = new System.Drawing.Point(472, 55);
             this.currPos1.Name = "currPos1";
             this.currPos1.ReadOnly = true;
-            this.currPos1.Size = new System.Drawing.Size(111, 83);
+            this.currPos1.Size = new System.Drawing.Size(137, 83);
             this.currPos1.TabIndex = 28;
             // 
             // currentLoad2
@@ -835,6 +839,24 @@
             this.StopButton.UseVisualStyleBackColor = true;
             this.StopButton.Click += new System.EventHandler(this.StopButton_Click);
             // 
+            // textK1
+            // 
+            this.textK1.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.textK1.Location = new System.Drawing.Point(999, 55);
+            this.textK1.Name = "textK1";
+            this.textK1.ReadOnly = true;
+            this.textK1.Size = new System.Drawing.Size(107, 83);
+            this.textK1.TabIndex = 28;
+            // 
+            // textK2
+            // 
+            this.textK2.Font = new System.Drawing.Font("Microsoft Sans Serif", 50F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.textK2.Location = new System.Drawing.Point(999, 147);
+            this.textK2.Name = "textK2";
+            this.textK2.ReadOnly = true;
+            this.textK2.Size = new System.Drawing.Size(107, 83);
+            this.textK2.TabIndex = 28;
+            // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -928,6 +950,8 @@
         private System.Windows.Forms.TextBox totalDiff1;
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.BindingSource bindingSource1;
+        private System.Windows.Forms.TextBox textK2;
+        private System.Windows.Forms.TextBox textK1;
     }
 }
 

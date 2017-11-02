@@ -66,14 +66,14 @@ namespace WindowsFormsApp1
                     int SerialSelect = PhToMtr[i] / 6;
                     //string tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
                     string tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + ",0}");
-                    //if (i == 10)
-                    //{
-                    //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
-                    //}
-                    //if (i == 11)
-                    //{
-                    //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
-                    //}
+                    if (i == 10)
+                    {
+                        tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                    }
+                    if (i == 11)
+                    {
+                        tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                    }
                     if (i == 4)
                     {
                         tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");

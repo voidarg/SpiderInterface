@@ -119,7 +119,6 @@ namespace WindowsFormsApp1
             motionCalculator.abort = false;
             PhidgetTread.Start();
             ReciverTread.Start();
-            SenderTread.Start();
             CalculatorTread.Start();
             UDPReceiverTread.Start();
             {
@@ -215,6 +214,7 @@ namespace WindowsFormsApp1
 
         private void StartButton_Click(object sender, EventArgs e)
         {
+            SenderTread.Start();
             phidgetReciver.Start();
             arduinoReciver.Start();
             arduinoSender.Start();
@@ -227,8 +227,8 @@ namespace WindowsFormsApp1
             {
                 for (int i = 0; i < phidgetReciver.Count(); i++)
                 {
-                    listOfLEdits[i].Text = (motionCalculator.getSetupAt(i).Load - motionCalculator.getSetupAt(i).ZeroLoad).ToString("#.##");
-                    listOfPEdits[i].Text = arduinoReciver.getValueOf(i).ToString("#.##");
+                    listOfLEdits[i].Text = (motionCalculator.getSetupAt(i).Load/* - motionCalculator.getSetupAt(i).ZeroLoad*/).ToString("#.##");
+                    listOfPEdits[i].Text = arduinoReciver.getValueOf(i).ToString("000");
                     listOfTEdits[i].Text = motionCalculator.getSetupAt(i).Direction + motionCalculator.getSetupAt(i).Torque.ToString("#.##");
                     listOfSEdits[i].Text = motionCalculator.getSetupAt(i).LastDiff.ToString("#.##");
                     motionCalculator.getSetupAt(i).Load = phidgetReciver.getValueOf(i);

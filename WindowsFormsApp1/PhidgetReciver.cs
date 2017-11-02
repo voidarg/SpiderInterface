@@ -7,13 +7,15 @@ using Phidget22;
 using Phidget22.Events;
 using System.Windows.Forms;
 using System.Threading;
-
 namespace WindowsFormsApp1
 {
     public class PhidgetReciver
     {
+        int PipeSize = 50;
         Dictionary<int, int> hashMap;
         private Dictionary<int,InputInfo> listOfPhidgets = new Dictionary<int, InputInfo>();
+        Dictionary<int, double> AxisPressSum = new Dictionary<int, double>();
+        Dictionary<int, Queue<double>> AxisPressQueue = new Dictionary<int, Queue<double>>();
         private Manager phidgetManager = new Manager();
 
         public bool abort { get; set; }
@@ -30,11 +32,19 @@ namespace WindowsFormsApp1
             // setup phidget bridge events
             for (int i = 0; i < listOfPhidgets.Count; i++)
             {
+                listOfPhidgets[i].Input.VoltageRatioChange += Input_VoltageRatioChange;
+                listOfPhidgets[i].Input.Detach += Input_Detach;
+                listOfPhidgets[i].Input.PropertyChange += Input_PropertyChange;
+                listOfPhidgets[i].Input.SensorChange += Input_SensorChange;
                 listOfPhidgets[i].Input.DataInterval = listOfPhidgets[i].Input.MinDataInterval;//????????
                                                                                                //listOfPhidgets[i].Input.VoltageRatioChangeTrigger = listOfPhidgets[i].Input.MinDataInterval;//????????
                 listOfPhidgets[i].Input.VoltageRatioChangeTrigger = 0;
                 listOfPhidgets[i].Input.BridgeGain = BridgeGain.Gain_128x;
                 listOfPhidgets[i].Input.BridgeEnabled = true;
+
+                AxisPressSum.Add(i, 0);
+                Queue<double> PressPipe = new Queue<double>();
+                AxisPressQueue.Add(i, PressPipe);
             }
         }
         public void Stop()
@@ -98,13 +108,10 @@ namespace WindowsFormsApp1
             input.DeviceLabel = Phidget.AnyLabel;
             input.HubPort = Phidget.AnyHubPort;
             input.Error += Input_Error;
-            input.VoltageRatioChange += Input_VoltageRatioChange;
-            input.Detach += Input_Detach;
-            input.PropertyChange += Input_PropertyChange;
-            input.SensorChange += Input_SensorChange;
-
             input.Open(0);
             input.BridgeEnabled = false;
+
+
 
             var info = new InputInfo(input);
             int targetHash = input.DeviceSerialNumber *10 +input.Channel;
@@ -157,7 +164,26 @@ namespace WindowsFormsApp1
                 if (i >= hashMap.Count) throw new NotImplementedException("wrongHash");
             }
 
-            listOfPhidgets[i].value = vr;
+            if (AxisPressQueue[i].Count < PipeSize)
+            {
+                AxisPressQueue[i].Enqueue(vr);
+                AxisPressSum[i] += vr;
+            }
+            else
+            {
+                if (Math.Abs(vr * PipeSize - AxisPressSum[i]) > 10000000000)
+                {
+                    AxisPressQueue[i].Enqueue(AxisPressSum[i] / 10);
+                    AxisPressSum[i] += (AxisPressSum[i] / 10);
+                }
+                else
+                {
+                    AxisPressQueue[i].Enqueue(vr);
+                    AxisPressSum[i] += vr;
+                }
+                AxisPressSum[i] -= AxisPressQueue[i].Dequeue();
+            }
+            listOfPhidgets[i].value = AxisPressSum[i] / PipeSize;
 
 
         }
