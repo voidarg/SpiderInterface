@@ -11,6 +11,7 @@ namespace WindowsFormsApp1
 {
     public class ArduinoReciver
     {
+        int PipeSize = 10;
         Dictionary<int, double> AxisPosition = new Dictionary<int, double>();
         Dictionary<int, double> AxisPositionSum = new Dictionary<int, double>();
         Dictionary<int, Queue<double>> AxisPositionQueue = new Dictionary<int, Queue<double>>();
@@ -20,15 +21,7 @@ namespace WindowsFormsApp1
         public ArduinoReciver(ref List<SerialPort> _listofPorts, ref Dictionary<int, int> _MtrToPh)
         {
             initializeArduinoDevices();
-            SerialPort serialPort = new SerialPort();
-            serialPort.BaudRate = 115200;
-            serialPort.PortName = "COM19";
-            serialPort.WriteTimeout = 1000;
-            serialPort.DtrEnable = false;
-            serialPort.RtsEnable = false;
-            serialPort.Open();
-            listofPorts.Add(serialPort);
-            listofPorts.Add(_listofPorts[1]);
+            listofPorts = _listofPorts;
             MtrToPh = _MtrToPh;
             for (int i = 0; i < listofPorts.Count; i++)
             {
@@ -73,10 +66,11 @@ namespace WindowsFormsApp1
         public void ThreadRun()
         {
             System.Diagnostics.Trace.WriteLine("ArduinoReciver started");
-            Thread.Sleep(2000);
+            Thread.Sleep(200);
             while (!abort)
             {
-                Thread.Sleep(1000);
+                Thread.Sleep(100);
+                //listofPorts[0].Write("1");
             }
             System.Diagnostics.Trace.WriteLine("ArduinoReciver stopped");
         }
@@ -92,7 +86,7 @@ namespace WindowsFormsApp1
             int i = 0;
             //if (listofPorts[2].PortName == sp.PortName) return;
             while (listofPorts[i++].PortName != sp.PortName) ;
-            int motorShift = (i-1)* 6;
+            int motorShift = (i - 1) * 10;
             if (sp.IsOpen)
             {
                 var data = sp.ReadExisting();
@@ -101,32 +95,40 @@ namespace WindowsFormsApp1
                 {
                     string[] tmp = m.ToString().Split(new string[] { ",P" }, StringSplitOptions.None);
 
-                    int motorTrimmed = int.Parse(tmp[0].Remove(0, 2));
                     int posTrimmed = int.Parse(tmp[1].TrimEnd('}'));
-                    int phidgetId = MtrToPh[motorTrimmed + motorShift];
-
-
-                    if (AxisPositionQueue[phidgetId].Count < 10)
+                    if (posTrimmed == -1)
                     {
-                        AxisPositionQueue[phidgetId].Enqueue(posTrimmed);
-                        AxisPositionSum[phidgetId] += posTrimmed;
+                        continue;
+                    }
+                    int motorPreTrimmed = int.Parse(tmp[0].Remove(0, 2)) + motorShift;
+                    int motorTrimmed;
+                    if (!MtrToPh.TryGetValue(motorPreTrimmed, out motorTrimmed))
+                    {
+                        continue;
+                    }
+
+
+                    if (AxisPositionQueue[motorTrimmed].Count < PipeSize)
+                    {
+                        AxisPositionQueue[motorTrimmed].Enqueue(posTrimmed);
+                        AxisPositionSum[motorTrimmed] += posTrimmed;
                     }
                     else
                     {
-                        if (Math.Abs(posTrimmed * 10 - AxisPositionSum[phidgetId]) > 1000)
+                        if (Math.Abs(posTrimmed * PipeSize - AxisPositionSum[motorTrimmed]) > PipeSize * 10000)
                         {
-                            AxisPositionQueue[phidgetId].Enqueue(AxisPositionSum[phidgetId] / 10);
-                            AxisPositionSum[phidgetId] += (AxisPositionSum[phidgetId] / 10);
+                            AxisPositionQueue[motorTrimmed].Enqueue(AxisPositionSum[motorTrimmed] / PipeSize);
+                            AxisPositionSum[motorTrimmed] += (AxisPositionSum[motorTrimmed] / PipeSize);
                         }
                         else
                         {
-                            AxisPositionQueue[phidgetId].Enqueue(posTrimmed);
-                            AxisPositionSum[phidgetId] += posTrimmed;
+                            AxisPositionQueue[motorTrimmed].Enqueue(posTrimmed);
+                            AxisPositionSum[motorTrimmed] += posTrimmed;
                         }
-                        AxisPositionSum[phidgetId] -= AxisPositionQueue[phidgetId].Dequeue();
+                        AxisPositionSum[motorTrimmed] -= AxisPositionQueue[motorTrimmed].Dequeue();
                     }
-                    AxisPosition[phidgetId] =  AxisPositionSum[phidgetId] / 10;
-                    //System.Diagnostics.Trace.WriteLine( m.ToString() + " " + sp.PortName + " " + (motorTrimmed + motorShift) + " " + motorTrimmed+ " " + posTrimmed);
+                    AxisPosition[motorTrimmed] = posTrimmed;// AxisPositionSum[motorTrimmed] / PipeSize;
+                    
                 }
             }
         }

@@ -59,54 +59,56 @@ namespace WindowsFormsApp1
             Thread.Sleep(2000);
             while (!abort)
             {
-                Thread.Sleep(1);
+                Thread.Sleep(10);
                 //System.Diagnostics.Trace.WriteLine("ArduinoSender is ok:"+ AxisTorque.Count.ToString());
                 for (int i = 0; i < AxisTorque.Count; i++)
                 {
-                    int SerialSelect = PhToMtr[i] / 6;
-                    //string tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
-                    string tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + ",0}");
+                    string tmp ="";
+                    int SerialSelect = PhToMtr[i] / 10;
+                    //string tmp = ("{M" + PhToMtr[i] % 10 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                    //string tmp = ("{M" + PhToMtr[i] % 10 + "," + AxisTorque[i].Direction + ",0}");
                     if (i == 10)
                     {
-                        tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                        tmp = ("{M" + PhToMtr[i] % 10 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
                     }
                     if (i == 11)
                     {
-                        tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                        tmp = ("{M" + PhToMtr[i] % 10 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
                     }
-                    if (i == 4)
-                    {
-                        tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
-                    }
-                    if (i == 5)
-                    {
-                        tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
-                    }
+                    //if (i == 4)
+                    //{
+                    //    tmp = ("{M" + PhToMtr[i] % 10 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                    //}
+                    //if (i == 5)
+                    //{
+                    //    tmp = ("{M" + PhToMtr[i] % 10 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                    //}
                     //if (i == 3)
                     //{
-                    //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                    //    tmp = ("{M" + PhToMtr[i] % 10 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
                     //}
                     //if (i == 8)
                     //{
-                    //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                    //    tmp = ("{M" + PhToMtr[i] % 10 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
                     //}
                     //if (i == 9)
                     //{
-                    //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                    //    tmp = ("{M" + PhToMtr[i] % 10 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
                     //}
                     //if (i == 2)
                     //{
-                    //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                    //    tmp = ("{M" + PhToMtr[i] % 10 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
                     //}
                     //if (i == 0)
                     //{
-                    //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                    //    tmp = ("{M" + PhToMtr[i] % 10 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
                     //}
                     //if (i == 1)
                     //{
-                    //    tmp = ("{M" + PhToMtr[i] % 6 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
+                    //    tmp = ("{M" + PhToMtr[i] % 10 + "," + AxisTorque[i].Direction + "," + Math.Abs(AxisTorque[i].Torque).ToString() + "}");
                     //}
                     m_listofPorts[SerialSelect].Write(tmp);
+                    Thread.Sleep(10);
                 }
             }
             System.Diagnostics.Trace.WriteLine("ArduinoSender stopped");

@@ -7,13 +7,20 @@ using Phidget22;
 using Phidget22.Events;
 using System.Windows.Forms;
 using System.Threading;
+
 namespace WindowsFormsApp1
 {
     public class PhidgetReciver
     {
         int PipeSize = 50;
+        bool NoRealDev = false;
+        int notRealCounter = 0;
+        int notRealCounterDir = 1;
+        private static System.Timers.Timer aTimer;
+
         Dictionary<int, int> hashMap;
-        private Dictionary<int,InputInfo> listOfPhidgets = new Dictionary<int, InputInfo>();
+        private Dictionary<int, InputInfo> listOfPhidgets = new Dictionary<int, InputInfo>();
+        private Dictionary<int, bool> listOfPhidgetsReady = new Dictionary<int, bool>();
         Dictionary<int, double> AxisPressSum = new Dictionary<int, double>();
         Dictionary<int, Queue<double>> AxisPressQueue = new Dictionary<int, Queue<double>>();
         private Manager phidgetManager = new Manager();
@@ -21,7 +28,21 @@ namespace WindowsFormsApp1
         public bool abort { get; set; }
         public double getValueOf(int index)
         {
+            if (NoRealDev) return AxisPressSum[index];
+
             return listOfPhidgets[index].value;
+        }
+        public bool getReadyOf(int index)
+        {
+            return listOfPhidgetsReady[index];
+        }
+        public void setNotReadyOf(int index)
+        {
+            listOfPhidgetsReady[index] = false;
+        }
+        public void setNoRealDevPos(int index, double value)
+        {
+            AxisPressSum[index] = value;
         }
         public int Count()
         {
@@ -29,6 +50,21 @@ namespace WindowsFormsApp1
         }
         public void Start()
         {
+            if (NoRealDev)
+            {
+                aTimer = new System.Timers.Timer();
+                aTimer.Interval = 200;
+
+                // Hook up the Elapsed event for the timer. 
+                aTimer.Elapsed += OnTimedEvent;
+
+                // Have the timer fire repeated events (true is the default)
+                aTimer.AutoReset = true;
+
+                // Start the timer
+                aTimer.Enabled = true;
+                return;
+            }
             // setup phidget bridge events
             for (int i = 0; i < listOfPhidgets.Count; i++)
             {
@@ -84,7 +120,14 @@ namespace WindowsFormsApp1
             hashMap.Add(9, 4659281);
             hashMap.Add(10, 4734700);
             hashMap.Add(11, 4734701);
-            
+            if (NoRealDev)
+            {
+                for (int i = 0; i < 12; i++)
+                {
+                    AxisPressSum.Add(i, 0);
+                    listOfPhidgets.Add(i, null);
+                }
+            }
             phidgetManager.Attach += OnPhidgetAttached;
             //phidgetManager.Detach += OnPhidgetDetached;
 
@@ -99,6 +142,18 @@ namespace WindowsFormsApp1
             }
             return true;
         }
+        private  void OnTimedEvent(Object source, System.Timers.ElapsedEventArgs e)
+        {
+            System.Diagnostics.Trace.WriteLine("OnTimedEvent OnTimedEvent ");
+            for (int i = 0; i < AxisPressSum.Count; i++)
+            {
+                AxisPressSum[i] +=notRealCounterDir;
+            }
+                if (notRealCounter > 300) notRealCounterDir = -1;
+                if (notRealCounter < -300) notRealCounterDir = 1;
+            notRealCounter += notRealCounterDir;
+        }
+
         void OnPhidgetAttached(object sender, ManagerAttachEventArgs args)
         {
             // add device to the list
@@ -121,6 +176,7 @@ namespace WindowsFormsApp1
                 if (i >= hashMap.Count) throw new NotImplementedException("wrongHash");
             }
             listOfPhidgets.Add(i, new InputInfo(input));
+            listOfPhidgetsReady.Add(i, false);
             System.Diagnostics.Trace.WriteLine("PhidgetReciver OnPhidgetAttached " + input.DeviceSerialNumber + " " + input.Channel);
         }
         private void Input_PropertyChange(object sender, PropertyChangeEventArgs e)
@@ -171,10 +227,10 @@ namespace WindowsFormsApp1
             }
             else
             {
-                if (Math.Abs(vr * PipeSize - AxisPressSum[i]) > 10000000000)
+                if (Math.Abs(vr * PipeSize - AxisPressSum[i]) > PipeSize*10000)
                 {
-                    AxisPressQueue[i].Enqueue(AxisPressSum[i] / 10);
-                    AxisPressSum[i] += (AxisPressSum[i] / 10);
+                    AxisPressQueue[i].Enqueue(AxisPressSum[i] / PipeSize);
+                    AxisPressSum[i] += (AxisPressSum[i] / PipeSize);
                 }
                 else
                 {
@@ -184,6 +240,8 @@ namespace WindowsFormsApp1
                 AxisPressSum[i] -= AxisPressQueue[i].Dequeue();
             }
             listOfPhidgets[i].value = AxisPressSum[i] / PipeSize;
+            listOfPhidgetsReady[i] = true;
+
 
 
         }

@@ -57,6 +57,7 @@
     <Compile Include="ArduinoReciver.cs" />
     <Compile Include="ArduinoResponse.cs" />
     <Compile Include="ArduinoSender.cs" />
+    <Compile Include="DataExchanger.cs" />
     <Compile Include="MotionCalculator.cs" />
     <Compile Include="MotorInfo.cs" />
     <Compile Include="Form1.cs">

@@ -42,6 +42,7 @@ namespace WindowsFormsApp1
                 TestSetup testSetup = new TestSetup();
                 testSetup.MotorId = i;
                 testSetup.TargetLoad = 0;
+                testSetup.PreLoad = 0;
                 testSetup.LastDiff = 0;
                 testSetup.LastLoad = testSetup.TargetLoad;
                 testSetup.Load = testSetup.TargetLoad;
@@ -52,23 +53,49 @@ namespace WindowsFormsApp1
                 testSetup.PositionRequestCommand = "{P" + testSetup.MotorId.ToString() + "}";
                 testSetup.MoveCommand = "M" + testSetup.MotorId.ToString() + ",{0},{1}";
                 testSetup.Torque = 0;
-                testSetup.TorqueLimit = 255;
-                testSetup.Koeff = 1;
+                testSetup.TorqueLimit = 250;
+                testSetup.KoeffH = 1;
+                testSetup.KoeffV = 0.1;
+                testSetup.CurKoeffH = testSetup.KoeffH;
+                testSetup.CurKoeffV = testSetup.KoeffV;
+                testSetup.KoeffP = 1;
+                testSetup.KoeffVSign = 1;
+                testSetup.KoeffHSign = 1;
                 testSetup.Direction = 'F';
                 testSetup.PositiveDir= 1;
+                testSetup.FriendlyMotor = i;
                 listOfSetups.Add(testSetup);
             }
             {
+                listOfSetups[4].FriendlyMotor = 5;
+                listOfSetups[5].FriendlyMotor = 4;
+                listOfSetups[10].FriendlyMotor = 11;
+                listOfSetups[11].FriendlyMotor = 10;
+                listOfSetups[4].PreLoad = 0;
+                listOfSetups[5].PreLoad = 0;
+                listOfSetups[10].PreLoad = 0;
+                listOfSetups[11].PreLoad = 0;
+                listOfSetups[10].MinPos = 300;
+                listOfSetups[10].MaxPos = 700;
+                listOfSetups[11].MinPos = 300;
+                listOfSetups[11].MaxPos = 700;
             }
             return true;
         }
         public void ThreadRun()
         {
+            System.IO.File.Delete("c:\\tmp\\runlog.csv");
             var sw = System.IO.File.AppendText("c:\\tmp\\runlog.csv");
             initializeCalculator();
             System.Diagnostics.Trace.WriteLine("MotionCalculator started");
             Thread.Sleep(2500);
-            while (listOfSetups[0].Load == 0 || listOfSetups[listOfSetups.Count - 1].Load == 0) ;
+            while (listOfSetups[0].Load == 0 || listOfSetups[listOfSetups.Count - 1].Load == 0)
+            {
+                if (abort)
+                {
+                    return;
+                };
+            }
             for (int j = 0; j < 1000; j++)
             {
                 for (int i = 0; i < listOfSetups.Count; i++)
@@ -80,107 +107,103 @@ namespace WindowsFormsApp1
             {
                 listOfSetups[i].ZeroLoad = listOfSetups[i].ZeroLoad / 1000;
             }
-            sw.WriteLine("Start of log ZeroLoad Front:" + listOfSetups[4].ZeroLoad.ToString() + "," + "ZeroLoad BAck:" + listOfSetups[5].ZeroLoad.ToString() + "," + "Koeff:" + listOfSetups[5].Koeff.ToString());
-            //sw.Write("CurDiff1,DiffSums,CurLoad,Torque,");
-            sw.WriteLine("L1,L2,MF,MB,");
+            sw.WriteLine("Start of log ZeroLoad Front:" + listOfSetups[10].ZeroLoad.ToString() + "," + "ZeroLoad BAck:" + listOfSetups[11].ZeroLoad.ToString() + "," + "KoeffH:" + listOfSetups[5].KoeffH.ToString() + "," + "KoeffV:" + listOfSetups[5].KoeffV.ToString());
+            sw.WriteLine("L1,L2,MF,MB,T1,CurKoeffV,T2,CurKoeffH");
             while (!abort)
             {
-                //Thread.Sleep(10);
-                for (int i = 5; i < 6/*listOfSetups.Count*/; i++)
+                for (int i = 0; i < listOfSetups.Count; i++)
                 {
                     // request position
-
-
-                    double L1 = listOfSetups[i].Load;
-                    double L2 = listOfSetups[i - 1].Load;
-                    double L1z = listOfSetups[i].ZeroLoad;
-                    double L2z = listOfSetups[i - 1].ZeroLoad;
-                    double T1 = ((((L2 - L2z) + (L1 - L1z)) + 400) / 10) * (1 + Math.Abs((L2 - L2z) + (L1 - L1z)) / 1000);         //UpDown
-                    double T2 = (((L2 - L2z) - (L1 - L1z)) / 1) * (1 + Math.Abs((L2 - L2z) - (L1 - L1z)) / 50);    //LeftRight
-                    double M1 = T1;
-                    double M2 = T1;
-                    double M3 = T2;
-                    double M4 = T2 * (-1);
-
-                    double MF = M1 + M3;
-                    double MB = M2 + M4;
-
-                    listOfSetups[i - 1].Torque = (int)MF;
-                    listOfSetups[i].Torque = (int)MB;
-
-                    if (listOfSetups[i].Torque > listOfSetups[i].TorqueLimit)
+                    if (listOfSetups[i].LastLoad == listOfSetups[i].Load)
                     {
-                        listOfSetups[i].Torque = listOfSetups[i].TorqueLimit;
+                        continue;
                     }
-                    else if (listOfSetups[i].Torque < (-1 * listOfSetups[i].TorqueLimit))
+                    listOfSetups[i].LastLoad = listOfSetups[i].Load;
+
+                    int FriendID = listOfSetups[i].FriendlyMotor;
+                    double L2;
+                    double L2z;
+                    double centeringF;
+                    double centeringB;
+
+                    if (FriendID > i) continue;
+                    if (FriendID == i)
                     {
-                        listOfSetups[i].Torque = (-1 * listOfSetups[i].TorqueLimit);
-                    }
-                    if (listOfSetups[i].Torque * listOfSetups[i].PositiveDir > 0)   // go back
-                    {
-                        listOfSetups[i].Direction = 'B';
-                    }
-                    else if (listOfSetups[i].Torque * listOfSetups[i].PositiveDir < 0) // go forward
-                    {
-                        listOfSetups[i].Direction = 'F';
+                        L2 = 0;
+                        L2z = 0;
                     }
                     else
                     {
-                        listOfSetups[i].Direction = 'F';
+                        L2 = listOfSetups[FriendID].Load;
+                        L2z = listOfSetups[FriendID].ZeroLoad;
                     }
+                    centeringF = (listOfSetups[FriendID].Position - 530) * 1/1000;
+                    centeringB = (listOfSetups[i].Position - 530) * 1 /1000;
+                    double L1 = listOfSetups[i].Load;
+                    double L1z = listOfSetups[i].ZeroLoad;
+                    double T1 = ((((L2 - L2z) + (L1 - L1z)) + listOfSetups[i].PreLoad) * listOfSetups[i].CurKoeffV); //UpDown
 
-                    if (listOfSetups[i - 1].Torque > listOfSetups[i - 1].TorqueLimit)
+                    if (Math.Sign(listOfSetups[i].KoeffVSign) == Math.Sign(T1))
                     {
-                        listOfSetups[i - 1].Torque = listOfSetups[i - 1].TorqueLimit;
-                    }
-                    else if (listOfSetups[i - 1].Torque < (-1 * listOfSetups[i - 1].TorqueLimit))
-                    {
-                        listOfSetups[i - 1].Torque = (-1 * listOfSetups[i - 1].TorqueLimit);
-                    }
-                    if (listOfSetups[i - 1].Torque * listOfSetups[i - 1].PositiveDir > 0)   // go back
-                    {
-                        listOfSetups[i - 1].Direction = 'B';
-                    }
-                    else if (listOfSetups[i - 1].Torque * listOfSetups[i - 1].PositiveDir < 0) // go forward
-                    {
-                        listOfSetups[i - 1].Direction = 'F';
+                        listOfSetups[i].CurKoeffV *= 1.01;
                     }
                     else
                     {
-                        listOfSetups[i - 1].Direction = 'F';
+                        listOfSetups[i].CurKoeffV = listOfSetups[i].KoeffV;
                     }
-                    sw.Write(L1 + "," + L2 + "," + MF + "," + MB + ",");
-                }
-                //System.Diagnostics.Trace.WriteLine("MotionCalculator is ok");
-                Thread.Sleep(10);
-                for (int i = 11; i < 12/*listOfSetups.Count*/; i++)
-                {
-                    // request position
+                    listOfSetups[i].KoeffVSign = Math.Sign(T1);
 
-                    double L1 = listOfSetups[i].Load;
-                    double L2 = listOfSetups[i-1].Load;
-                    double L1z = listOfSetups[i].ZeroLoad;
-                    double L2z = listOfSetups[i - 1].ZeroLoad;
-                    double T1 = (((L2 - L2z)+(L1 - L1z))+500) / 10;
-                    double T2 = ((L2-L2z) - (L1-L1z))/ 0.5;
+                    if (listOfSetups[i].CurKoeffV > 20)
+                    {
+                        listOfSetups[i].CurKoeffV = 20;
+                    }
+                    else if (listOfSetups[i].CurKoeffV < -20)
+                    {
+                        listOfSetups[i].CurKoeffV = -20;
+                    }
+
+                    double T2 = (((L2 - L2z) - (L1 - L1z))                             * listOfSetups[i].KoeffH) ; //LeftRight
+
+
+                    if (Math.Sign(listOfSetups[i].KoeffHSign) == Math.Sign(T2))
+                    {
+                        listOfSetups[i].CurKoeffH *= 1.1;
+                    }
+                    else
+                    {
+                        listOfSetups[i].CurKoeffH = listOfSetups[i].KoeffH;
+                    }
+                    listOfSetups[i].KoeffHSign = Math.Sign(T2);
+
+                    if (listOfSetups[i].CurKoeffH > 20)
+                    {
+                        listOfSetups[i].CurKoeffH = 20;
+                    }
+                    else if (listOfSetups[i].CurKoeffH < -20)
+                    {
+                        listOfSetups[i].CurKoeffH = -20;
+                    }
+
                     double M1 = T1;
                     double M2 = T1;
                     double M3 = T2;
                     double M4 = T2*(-1);
 
-                    double MF = M1 + M3;
-                    double MB = M2 + M4;
+                    double MF = M1 + M3 ;
+                    double MB = M2 + M4 ;
 
-                    listOfSetups[i - 1].Torque = (int)MF;
-                    listOfSetups[i].Torque = (int)MB;
 
-                    if (listOfSetups[i].Torque > listOfSetups[i].TorqueLimit)
+                    if ((int)MB > listOfSetups[i].TorqueLimit)
                     {
                         listOfSetups[i].Torque = listOfSetups[i].TorqueLimit;
                     }
-                    else if (listOfSetups[i].Torque < (-1 * listOfSetups[i].TorqueLimit))
+                    else if ((int)MB < (-1 * listOfSetups[i].TorqueLimit))
                     {
                         listOfSetups[i].Torque = (-1 * listOfSetups[i].TorqueLimit);
+                    }
+                    else
+                    {
+                        listOfSetups[i].Torque = (int)MB;
                     }
                     if (listOfSetups[i].Torque * listOfSetups[i].PositiveDir > 0)   // go back
                     {
@@ -194,31 +217,38 @@ namespace WindowsFormsApp1
                     {
                         listOfSetups[i].Direction = 'F';
                     }
-
-                    if (listOfSetups[i-1].Torque > listOfSetups[i-1].TorqueLimit)
+                    if (FriendID != i)
                     {
-                        listOfSetups[i-1].Torque = listOfSetups[i-1].TorqueLimit;
+                        if ((int)MF > listOfSetups[FriendID].TorqueLimit)
+                        {
+                            listOfSetups[FriendID].Torque = listOfSetups[FriendID].TorqueLimit;
+                        }
+                        else if ((int)MF < (-1 * listOfSetups[FriendID].TorqueLimit))
+                        {
+                            listOfSetups[FriendID].Torque = (-1 * listOfSetups[FriendID].TorqueLimit);
+                        }
+                        else
+                        {
+                            listOfSetups[FriendID].Torque = (int)MF;
+                        }
+                        if (listOfSetups[FriendID].Torque * listOfSetups[FriendID].PositiveDir > 0)   // go back
+                        {
+                            listOfSetups[FriendID].Direction = 'B';
+                        }
+                        else if (listOfSetups[FriendID].Torque * listOfSetups[FriendID].PositiveDir < 0) // go forward
+                        {
+                            listOfSetups[FriendID].Direction = 'F';
+                        }
+                        else
+                        {
+                            listOfSetups[FriendID].Direction = 'F';
+                        }
                     }
-                    else if (listOfSetups[i-1].Torque < (-1 * listOfSetups[i-1].TorqueLimit))
+                    if (i==11)
                     {
-                        listOfSetups[i-1].Torque = (-1 * listOfSetups[i-1].TorqueLimit);
+                        sw.WriteLine(L1+","+L2 + "," + MF + "," + MB + "," + T1 + "," + listOfSetups[i].CurKoeffV + "," + T2 + "," + listOfSetups[i].CurKoeffH + ",");
                     }
-                    if (listOfSetups[i-1].Torque * listOfSetups[i-1].PositiveDir > 0)   // go back
-                    {
-                        listOfSetups[i-1].Direction = 'B';
-                    }
-                    else if (listOfSetups[i-1].Torque * listOfSetups[i-1].PositiveDir < 0) // go forward
-                    {
-                        listOfSetups[i-1].Direction = 'F';
-                    }
-                    else
-                    {
-                        listOfSetups[i-1].Direction = 'F';
-                    }
-                    sw.WriteLine(L1 + "," + L2 + "," + MF + "," + MB + ",");
                 }
-                
-
             }
             sw.Close();
             System.Diagnostics.Trace.WriteLine("MotionCalculator stopped");

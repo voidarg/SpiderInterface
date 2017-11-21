@@ -12,6 +12,7 @@ using System.Diagnostics;
 using System.Net.Sockets;
 using System.Net;
 
+
 namespace WindowsFormsApp1
 {
     public partial class Form1 : Form
@@ -25,47 +26,51 @@ namespace WindowsFormsApp1
         List<TextBox> listOfPEdits = new List<TextBox>();
         List<TextBox> listOfTEdits = new List<TextBox>();
         List<TextBox> listOfSEdits = new List<TextBox>();
+        List<TextBox> listOfKHEdits = new List<TextBox>();
+        List<TextBox> listOfKVEdits = new List<TextBox>();
         List<SerialPort> listofPorts = new List<SerialPort>();
 
-        Thread PhidgetTread;
-        Thread ReciverTread;
-        Thread SenderTread;
-        Thread CalculatorTread;
-        Thread UDPReceiverTread;
+        Thread PhidgetThread;
+        Thread ReciverThread;
+        Thread SenderThread;
+        Thread CalculatorThread;
+        Thread UDPReceiverThread;
+        Thread DataExchangerThread;
 
         PhidgetReciver phidgetReciver = new PhidgetReciver();
         MotionCalculator motionCalculator = new MotionCalculator();
         ArduinoReciver arduinoReciver;
         ArduinoSender arduinoSender;
         UdpReceiver udpReceiver;
-        
+        DataExchanger dataExchanger;
+
         public Form1()
         {
-            for (int i = 0; i < 6; i++)
+            string[] portnames = SerialPort.GetPortNames();
+            if (portnames.Length != 3) throw new NotImplementedException();
+            Array.Sort(portnames);
+            for (int i = 0; i < 12; i++)
             {
-                MotorsCPort.Add(i,4);
+                MotorsCPort.Add(i, int.Parse(portnames[i/4].Remove(0, 3)));
             }
-            for (int i = 6; i < 12; i++)
+
             {
-                MotorsCPort.Add(i, 8);
+                PhToMtr.Add( 0,10); //LAL1
+                PhToMtr.Add( 1,11); //LAL2
+                PhToMtr.Add( 2,12); //LAL3
+                PhToMtr.Add( 3,13); //LAR1
+                PhToMtr.Add( 4,0);  //LLF
+                PhToMtr.Add( 5,1);  //LLB
+                PhToMtr.Add( 6,22);  //NC
+                PhToMtr.Add( 7,23);  //NC
+                PhToMtr.Add( 8,20); //LAR2
+                PhToMtr.Add( 9,21); //LAR3
+                PhToMtr.Add( 10,2); //RLF
+                PhToMtr.Add( 11,3); //RLB
             }
+            for (int i = 0; i < PhToMtr.Count; i++)
             {
-                MtrToPh.Add( 2,10);
-                MtrToPh.Add( 3,11);
-                MtrToPh.Add( 0,4);
-                MtrToPh.Add( 1,5);
-                MtrToPh.Add( 4,6);
-                MtrToPh.Add( 5,7);
-                MtrToPh.Add( 6,0);
-                MtrToPh.Add( 7,1);
-                MtrToPh.Add( 8,2);
-                MtrToPh.Add( 9,3);
-                MtrToPh.Add( 10,8);
-                MtrToPh.Add( 11,9);
-            }
-            for (int i = 0; i < MtrToPh.Count; i++)
-            {
-                PhToMtr.Add(MtrToPh[i],i);
+                MtrToPh.Add(PhToMtr[i],i);
             }
             InitializeComponent();
         }
@@ -101,26 +106,30 @@ namespace WindowsFormsApp1
             arduinoSender = new ArduinoSender(ref listofPorts, ref PhToMtr);
             arduinoReciver = new ArduinoReciver(ref listofPorts,ref MtrToPh);
             udpReceiver = new UdpReceiver(ref udpClient);
-            PhidgetTread = new Thread(new ThreadStart(phidgetReciver.ThreadRun));
-            ReciverTread = new Thread(new ThreadStart(arduinoReciver.ThreadRun));
-            SenderTread = new Thread(new ThreadStart(arduinoSender.ThreadRun));
-            CalculatorTread = new Thread(new ThreadStart(motionCalculator.ThreadRun));
-            UDPReceiverTread = new Thread(new ThreadStart(udpReceiver.ThreadRun));
+            dataExchanger = new DataExchanger(ref arduinoReciver, ref arduinoSender, ref phidgetReciver, ref motionCalculator);
+            PhidgetThread = new Thread(new ThreadStart(phidgetReciver.ThreadRun));
+            ReciverThread = new Thread(new ThreadStart(arduinoReciver.ThreadRun));
+            SenderThread = new Thread(new ThreadStart(arduinoSender.ThreadRun));
+            CalculatorThread = new Thread(new ThreadStart(motionCalculator.ThreadRun));
+            UDPReceiverThread = new Thread(new ThreadStart(udpReceiver.ThreadRun));
+            DataExchangerThread = new Thread(new ThreadStart(dataExchanger.ThreadRun));
             System.Diagnostics.Trace.WriteLine("Before start thread");
-            PhidgetTread.Name = "PhidgetTread";
-            ReciverTread.Name = "ReciverTread";
-            SenderTread.Name = "SenderTread";
-            CalculatorTread.Name = "CalculatorTread";
-            UDPReceiverTread.Name = "UDPReceiverTread";
+            PhidgetThread.Name = "PhidgetThread";
+            ReciverThread.Name = "ReciverThread";
+            SenderThread.Name = "SenderThread";
+            CalculatorThread.Name = "CalculatorThread";
+            UDPReceiverThread.Name = "UDPReceiverThread";
+            DataExchangerThread.Name = "DataExchangerThread";
 
             phidgetReciver.abort = false;
             arduinoReciver.abort = false;
             arduinoSender.abort = false;
             motionCalculator.abort = false;
-            PhidgetTread.Start();
-            ReciverTread.Start();
-            CalculatorTread.Start();
-            UDPReceiverTread.Start();
+            dataExchanger.abort = false;
+            PhidgetThread.Start();
+            ReciverThread.Start();
+            CalculatorThread.Start();
+            UDPReceiverThread.Start();
             {
                 listOfLEdits.Add(currentLoad1);
                 listOfLEdits.Add(currentLoad2);
@@ -177,24 +186,59 @@ namespace WindowsFormsApp1
                 listOfSEdits.Add(totalDiff11);
                 listOfSEdits.Add(totalDiff12);
             }
+            {
+                listOfKHEdits.Add(KoeffH1);
+                listOfKHEdits.Add(KoeffH2);
+                listOfKHEdits.Add(KoeffH3);
+                listOfKHEdits.Add(KoeffH4);
+                listOfKHEdits.Add(KoeffH5);
+                listOfKHEdits.Add(KoeffH6);
+                listOfKHEdits.Add(KoeffH7);
+                listOfKHEdits.Add(KoeffH8);
+                listOfKHEdits.Add(KoeffH9);
+                listOfKHEdits.Add(KoeffH10);
+                listOfKHEdits.Add(KoeffH11);
+                listOfKHEdits.Add(KoeffH12);
+            }
+            {
+                listOfKVEdits.Add(KoeffV1);
+                listOfKVEdits.Add(KoeffV2);
+                listOfKVEdits.Add(KoeffV3);
+                listOfKVEdits.Add(KoeffV4);
+                listOfKVEdits.Add(KoeffV5);
+                listOfKVEdits.Add(KoeffV6);
+                listOfKVEdits.Add(KoeffV7);
+                listOfKVEdits.Add(KoeffV8);
+                listOfKVEdits.Add(KoeffV9);
+                listOfKVEdits.Add(KoeffV10);
+                listOfKVEdits.Add(KoeffV11);
+                listOfKVEdits.Add(KoeffV12);
+            }
+
+            this.Location = new Point(0, 0);
 
         }
 
         
         private void Form1_FormClosed(object sender, FormClosedEventArgs e)
         {
-            StopButton_Click(null,null);
+            phidgetReciver.Stop();
+            arduinoReciver.Stop();
+            arduinoSender.Stop();
+            motionCalculator.Stop();
+            dataExchanger.Stop();
             phidgetReciver.abort = true;
             arduinoReciver.abort = true;
             arduinoSender.abort = true;
             motionCalculator.abort = true;
+            dataExchanger.abort = true;
             udpReceiver.Stop();
             abort = true;
-            if(PhidgetTread.IsAlive)PhidgetTread.Join();
-            if(ReciverTread.IsAlive)ReciverTread.Join();
-            if(SenderTread.IsAlive)SenderTread.Join();
-            if (CalculatorTread.IsAlive) CalculatorTread.Join();
-            //if (UDPReceiverTread.IsAlive) UDPReceiverTread.Join();
+            if(PhidgetThread.IsAlive)PhidgetThread.Join();
+            if(ReciverThread.IsAlive)ReciverThread.Join();
+            if(SenderThread.IsAlive)SenderThread.Join();
+            if(CalculatorThread.IsAlive)CalculatorThread.Join();
+            //if (UDPReceiverThread.IsAlive) UDPReceiverThread.Join();
             for (int j = 0; j < listofPorts.Count; j++)
             {
                 for (int i = 0; i < 6; i++)
@@ -214,26 +258,28 @@ namespace WindowsFormsApp1
 
         private void StartButton_Click(object sender, EventArgs e)
         {
-            SenderTread.Start();
+            SenderThread.Start();
             phidgetReciver.Start();
             arduinoReciver.Start();
             arduinoSender.Start();
             motionCalculator.Start();
+            dataExchanger.Start();
+            DataExchangerThread.Start();
             StartButton.Enabled = false;
-            StopButton.Enabled = true;
             //var sw = System.IO.File.AppendText("c:\\tmp\\runlog.csv");
-
+            for (int i = 0; i < listOfKHEdits.Count; i++)
+            {
+                listOfKHEdits[i].Text = motionCalculator.getSetupAt(i).KoeffH.ToString();
+                listOfKVEdits[i].Text = motionCalculator.getSetupAt(i).KoeffV.ToString();
+            }
             while (!abort)
             {
                 for (int i = 0; i < phidgetReciver.Count(); i++)
                 {
-                    listOfLEdits[i].Text = (motionCalculator.getSetupAt(i).Load/* - motionCalculator.getSetupAt(i).ZeroLoad*/).ToString("#.##");
+                    listOfLEdits[i].Text = (motionCalculator.getSetupAt(i).Load- motionCalculator.getSetupAt(i).ZeroLoad).ToString("#.##");
                     listOfPEdits[i].Text = arduinoReciver.getValueOf(i).ToString("000");
                     listOfTEdits[i].Text = motionCalculator.getSetupAt(i).Direction + motionCalculator.getSetupAt(i).Torque.ToString("#.##");
-                    listOfSEdits[i].Text = motionCalculator.getSetupAt(i).LastDiff.ToString("#.##");
-                    motionCalculator.getSetupAt(i).Load = phidgetReciver.getValueOf(i);
-                    motionCalculator.getSetupAt(i).Position = arduinoReciver.getValueOf(i);
-                    arduinoSender.setValueOf(i, motionCalculator.getSetupAt(i).Torque, motionCalculator.getSetupAt(i).Direction);
+                    listOfSEdits[i].Text = (motionCalculator.getSetupAt(i).KoeffHSign * motionCalculator.getSetupAt(i).CurKoeffH).ToString("#.##");
                 }
                 //sw.WriteLine(motionCalculator.getSetupAt(4).LastDiff + "," + phidgetReciver.getValueOf(4).ToString() + "," + motionCalculator.getSetupAt(4).Torque.ToString("#.##")+","+ motionCalculator.getSetupAt(5).LastDiff + "," + phidgetReciver.getValueOf(5).ToString() + "," + motionCalculator.getSetupAt(5).Torque.ToString("#.##"));
                 //Thread.Sleep(10);
@@ -242,29 +288,28 @@ namespace WindowsFormsApp1
             //sw.Close();
 
         }
-        
-        private void StopButton_Click(object sender, EventArgs e)
-        {
-            phidgetReciver.Stop();
-            arduinoReciver.Stop();
-            motionCalculator.Stop();
-            //for (int i = 0; i < listOfSetups.Count; i++)
-            //{
-              //  var command = String.Format(listOfSetups[i].MoveCommand, "B", 0);
-                //arduinoReciver.
-                //listofPorts[MotorsCPort[i]].Write("{" + command + "}");
-            //}
 
-            // System.Threading.Thread.Sleep(500);
-
-
-            StartButton.Enabled = true;
-            StopButton.Enabled = false;
-        }
 
         private void STOPButt_Click(object sender, EventArgs e)
         {
             System.Windows.Forms.Application.Exit();
+        }
+
+        private void SetKoeff_Click(object sender, EventArgs e)
+        {
+            for (int i = 0; i < listOfKHEdits.Count; i++)
+            {
+                motionCalculator.getSetupAt(i).KoeffH = Double.Parse(listOfKHEdits[i].Text);
+                motionCalculator.getSetupAt(i).KoeffV = Double.Parse(listOfKVEdits[i].Text);
+            }
+        }
+
+        private void numericUpDown1_ValueChanged(object sender, EventArgs e)
+        {
+            for (int i = 0; i < phidgetReciver.Count(); i++)
+            {
+                phidgetReciver.setNoRealDevPos(i, (double)numericUpDown1.Value);
+            }
         }
     }
     public class TestSetup
@@ -272,14 +317,23 @@ namespace WindowsFormsApp1
         public int Phidget { get; set; }
         public int MotorId { get; set; }
         public double TargetLoad { get; set; }
+        public double PreLoad { get; set; }
         public int MinPos { get; set; }
         public int MaxPos { get; set; }
 
         public int Torque { get; set; }
         public int TorqueLimit { get; set; }
-        public double Koeff { get; set; }
+        public int FriendlyMotor { get; set; }
+        public double KoeffH { get; set; }
+        public double KoeffV { get; set; }
+        public double CurKoeffH { get; set; }
+        public double CurKoeffV { get; set; }
+        public double KoeffP { get; set; }
+        public int KoeffVSign { get; set; }
+        public int KoeffHSign { get; set; }
         public double LastLoad { get; set; }
         public double Load { get; set; }
+        public double LoadLast { get; set; }
         public double ZeroLoad { get; set; }
         public int Position { get; set; }
         public double LastDiff { get; set; }
@@ -288,6 +342,7 @@ namespace WindowsFormsApp1
         public string PositionRequestCommand { get; set; }
         public string MoveCommand { get; set; }
         public bool FirstPick { get; set; }
+        public bool newData { get; set; }
     }
     public class TorqueAndDir
     {
